@@ -395,6 +395,7 @@ function HomeDesign() {
           class="min-h-0 min-w-0 flex-1 flex flex-col pt-12"
           aria-label={language.t("sidebar.project.recentSessions")}
         >
+          <CopartnerComposer onStart={(task) => navigate(`/new-session?prompt=${encodeURIComponent(task)}`)} />
           <HomeSessionSearch
             value={state.search}
             placeholder={language.t("home.sessions.search.placeholder")}
@@ -767,6 +768,42 @@ function HomeSessionLeading(props: {
         />
       </Show>
       <HomeSessionAvatar project={props.project} session={props.session} activeServer={props.activeServer} />
+    </div>
+  )
+}
+
+// Copartner: task-first entry — type what Praex should work on, land in the draft
+// composer with the prompt prefilled (review model/agent there, then send). The phone
+// flow for "it works, you steer": start here, watch the session, answer permission asks.
+function CopartnerComposer(props: { onStart: (task: string) => void }) {
+  const [store, setStore] = createStore({ task: "" })
+  const submit = () => {
+    const task = store.task.trim()
+    if (!task) return
+    props.onStart(task)
+    setStore("task", "")
+  }
+  return (
+    <div class="mb-3 ml-4 mr-2 w-[calc(100%_-_24px)]">
+      <label class="flex h-9 w-full items-center gap-2 rounded-[6px] bg-v2-background-bg-layer-03 py-1 pl-3 pr-2 text-v2-icon-icon-muted transition-[box-shadow] duration-[120ms] ease-in-out focus-within:shadow-[0_0_0_0.5px_var(--v2-border-border-focus),var(--v2-elevation-raised)]">
+        <IconV2 name="edit" />
+        <input
+          class="min-w-0 flex-1 border-0 bg-transparent text-v2-text-text-base outline-0 [font-weight:440] placeholder:text-v2-text-text-faint"
+          value={store.task}
+          placeholder="Copartner — give Praex a task"
+          aria-label="Copartner — give Praex a task"
+          onInput={(event) => setStore("task", event.currentTarget.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.isComposing) {
+              event.preventDefault()
+              submit()
+            }
+          }}
+        />
+        <ButtonV2 variant="ghost-muted" size="normal" class="h-7 shrink-0 px-2 [font-weight:530]" onClick={submit}>
+          Start
+        </ButtonV2>
+      </label>
     </div>
   )
 }
