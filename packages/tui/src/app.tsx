@@ -757,9 +757,10 @@ function App(props: {
       },
       {
         name: "provider.connect",
-        title: "Connect provider",
+        title: "Connect provider (bring your own key)",
         suggested: !connected(),
         slashName: "connect",
+        slashAliases: ["byok"],
         run: () => {
           dialog.replace(() => <DialogProviderList />)
         },

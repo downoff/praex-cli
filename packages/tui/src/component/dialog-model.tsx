@@ -58,9 +58,13 @@ export function DialogModel(props: { providerID?: string }) {
       "Recent",
     )
 
+    // Self-hosted open-source providers (Lucia tiers, GLM, local ollama) pin to the top of
+    // /models under an "Open source" section — personal-phase default; revisit for public.
+    const OSS_PROVIDERS = new Set(["lucia", "glm", "ollama"])
     const providerOptions = pipe(
       sync.data.provider,
       sortBy(
+        (provider) => !OSS_PROVIDERS.has(provider.id),
         (provider) => provider.id !== "opencode",
         (provider) => provider.name,
       ),
@@ -77,7 +81,11 @@ export function DialogModel(props: { providerID?: string }) {
             description: favorites.some((item) => item.providerID === provider.id && item.modelID === model)
               ? "(Favorite)"
               : undefined,
-            category: connected() ? provider.name : undefined,
+            category: connected()
+              ? OSS_PROVIDERS.has(provider.id)
+                ? `Open source · ${provider.name}`
+                : provider.name
+              : undefined,
             disabled: provider.id === "opencode" && model.includes("-nano"),
             footer: info.cost?.input === 0 && provider.id === "opencode" ? "Free" : undefined,
             onSelect() {
