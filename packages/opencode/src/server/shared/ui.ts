@@ -5,8 +5,35 @@ import { createHash } from "node:crypto"
 import { ProxyUtil } from "../proxy-util"
 
 let embeddedUIPromise: Promise<Record<string, string> | null> | undefined
+let localUIPromise: Promise<Record<string, string> | null> | undefined
 
 export const UI_UPSTREAM = new URL("https://app.opencode.ai")
+
+// Source checkouts have no embedded bundle; serve the built PWA from
+// packages/app/dist so the UI never falls back to the upstream proxy.
+function localUI() {
+  return (localUIPromise ??= (async () => {
+    try {
+      const { fileURLToPath } = await import("node:url")
+      const path = await import("node:path")
+      const fs = await import("node:fs/promises")
+      const dist = fileURLToPath(new URL("../../../../app/dist/", import.meta.url))
+      const entries = await fs.readdir(dist, { recursive: true, withFileTypes: true })
+      const map: Record<string, string> = {}
+      for (const entry of entries) {
+        if (!entry.isFile()) continue
+        const parent = entry.parentPath ?? dist
+        const abs = path.join(parent, entry.name)
+        const rel = path.relative(dist, abs).replaceAll("\\", "/")
+        if (rel.endsWith(".map")) continue
+        map[rel] = abs
+      }
+      return map["index.html"] ? map : null
+    } catch {
+      return null
+    }
+  })())
+}
 
 export const csp = (hash = "") =>
   `default-src 'self'; script-src 'self' 'wasm-unsafe-eval'${hash ? ` 'sha256-${hash}'` : ""}; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; media-src 'self' data:; connect-src * data:`
@@ -45,7 +72,9 @@ export function embeddedUI(disableEmbeddedWebUi: boolean) {
   if (disableEmbeddedWebUi) return Promise.resolve(null)
   return (embeddedUIPromise ??=
     // @ts-expect-error - generated file at build time
-    import("opencode-web-ui.gen.ts").then((module) => module.default as Record<string, string>).catch(() => null))
+    import("opencode-web-ui.gen.ts")
+      .then((module) => module.default as Record<string, string>)
+      .catch(() => localUI()))
 }
 
 function notFound() {

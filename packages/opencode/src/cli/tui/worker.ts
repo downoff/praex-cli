@@ -44,10 +44,18 @@ export const rpc = {
     const result = writeHeapSnapshot("server.heapsnapshot")
     return result
   },
-  async server(input: { port: number; hostname: string; mdns?: boolean; cors?: string[] }) {
+  async server(input: { port: number; hostname: string; mdns?: boolean; cors?: string[]; password?: string }) {
     if (server) await server.stop(true)
-    server = await Server.listen(input)
+    // listeners read auth from env via a fresh ConfigProvider per listen, so
+    // setting it here arms Basic auth for the TCP listener without touching
+    // the in-process transport (Flag/default config snapshot at module load)
+    if (input.password) process.env.OPENCODE_SERVER_PASSWORD = input.password
+    server = await Server.listen({ port: input.port, hostname: input.hostname, mdns: input.mdns, cors: input.cors })
     return { url: server.url.toString() }
+  },
+  async serverStop() {
+    if (server) await server.stop(true)
+    server = undefined
   },
   async checkUpgrade(input: { directory: string }) {
     await InstanceRuntime.load({ directory: input.directory })

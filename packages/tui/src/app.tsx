@@ -42,6 +42,7 @@ import { DialogMcp } from "./component/dialog-mcp"
 import { DialogStatus } from "./component/dialog-status"
 import { DialogThemeList } from "./component/dialog-theme-list"
 import { DialogHelp } from "./ui/dialog-help"
+import { DialogAfk } from "./component/dialog-afk"
 import { DialogAgent } from "./component/dialog-agent"
 import { DialogSessionList } from "./component/dialog-session-list"
 import { DialogWorkspaceList } from "./component/dialog-workspace-list"
@@ -131,11 +132,19 @@ const appBindingCommands = [
   "app.toggle.session_directory_filter",
 ] as const
 
+export type AfkInfo = {
+  urls: string[]
+  username: string
+  password?: string
+}
+
 export type TuiInput = {
   url: string
   args: Args
   config: TuiConfig.Resolved
   onSnapshot?: () => Promise<string[]>
+  onExpose?: () => Promise<AfkInfo>
+  onExposeStop?: () => Promise<void>
   directory?: string
   fetch?: typeof fetch
   headers?: RequestInit["headers"]
@@ -305,6 +314,8 @@ export const run = Effect.fn("Tui.run")(function* (input: TuiInput) {
                                                               <EditorContextProvider>
                                                                 <App
                                                                   onSnapshot={input.onSnapshot}
+                                                                  onExpose={input.onExpose}
+                                                                  onExposeStop={input.onExposeStop}
                                                                   pluginHost={input.pluginHost}
                                                                 />
                                                               </EditorContextProvider>
@@ -348,7 +359,12 @@ export const run = Effect.fn("Tui.run")(function* (input: TuiInput) {
   })
 })
 
-function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPluginHost }) {
+function App(props: {
+  onSnapshot?: () => Promise<string[]>
+  onExpose?: () => Promise<AfkInfo>
+  onExposeStop?: () => Promise<void>
+  pluginHost: TuiPluginHost
+}) {
   const startup = useTuiStartup()
   const tuiConfig = useTuiConfig()
   const route = useRoute()
@@ -800,6 +816,23 @@ function App(props: { onSnapshot?: () => Promise<string[]>; pluginHost: TuiPlugi
           dialog.clear()
         },
         category: "System",
+      },
+      {
+        name: "app.afk",
+        title: "AFK — control this session from your phone",
+        slashName: "afk",
+        slashAliases: ["remote"],
+        category: "System",
+        enabled: !!props.onExpose,
+        run: async () => {
+          try {
+            const info = await props.onExpose!()
+            dialog.replace(() => <DialogAfk info={info} onStop={props.onExposeStop} />)
+          } catch (error) {
+            toast.show({ variant: "error", message: errorMessage(error), duration: 5000 })
+            dialog.clear()
+          }
+        },
       },
       {
         name: "app.exit",

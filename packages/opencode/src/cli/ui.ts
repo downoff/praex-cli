@@ -1,13 +1,17 @@
 import { EOL } from "os"
 import { Schema } from "effect"
 
+// Squared-tilde mark + PRAEX wordmark (matches tui/src/logo.ts)
+const mark = [
+  `█▀▀▀▀▀▀▀▀▀█`, //
+  `█▄▄▀▀▀▄▄▄▀█`,
+  `█▄▄▄▄▄▄▄▄▄█`,
+]
+
 const wordmark = [
-  `██╗     ██╗   ██╗ ██████╗██╗██╗   ██╗███████╗`,
-  `██║     ██║   ██║██╔════╝██║██║   ██║██╔════╝`,
-  `██║     ██║   ██║██║     ██║██║   ██║███████╗`,
-  `██║     ██║   ██║██║     ██║██║   ██║╚════██║`,
-  `███████╗╚██████╔╝╚██████╗██║╚██████╔╝███████║`,
-  `╚══════╝ ╚═════╝  ╚═════╝╚═╝ ╚═════╝ ╚══════╝`,
+  `█▀▀▀▄ █▀▀▀▄ ▄▀▀▀▄ █▀▀▀▀ ▀▄ ▄▀`, //
+  `█▄▄▄▀ █▄▄▄▀ █▄▄▄█ █▀▀▀    █  `,
+  `█     █  ▀▄ █   █ █▄▄▄▄ ▄▀ ▀▄`,
 ]
 
 export class CancelledError extends Schema.TaggedErrorClass<CancelledError>()("UICancelledError", {}) {}
@@ -48,10 +52,13 @@ export function empty() {
 
 export function logo(pad?: string) {
   const color = process.stdout.isTTY || process.stderr.isTTY
+  const purple = "\x1b[38;5;141m"
+  const bright = "\x1b[1m\x1b[97m"
   const result: string[] = []
-  for (const row of wordmark) {
+  for (let i = 0; i < wordmark.length; i++) {
     if (pad) result.push(pad)
-    result.push(color ? Style.TEXT_HIGHLIGHT + row + Style.TEXT_NORMAL : row)
+    const row = mark[i] + " " + wordmark[i]
+    result.push(color ? purple + mark[i] + Style.TEXT_NORMAL + " " + bright + wordmark[i] + Style.TEXT_NORMAL : row)
     result.push(EOL)
   }
   return result.join("").trimEnd()

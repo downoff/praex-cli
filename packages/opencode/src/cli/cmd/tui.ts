@@ -2,6 +2,8 @@ import { cmd } from "@/cli/cmd/cmd"
 import { Rpc } from "@/util/rpc"
 import { type rpc } from "../tui/worker"
 import path from "path"
+import os from "node:os"
+import { randomBytes } from "node:crypto"
 import { fileURLToPath } from "url"
 import { UI } from "@/cli/ui"
 import { errorMessage } from "@opencode-ai/tui/util/error"
@@ -70,12 +72,12 @@ export function resolveThreadDirectory(project?: string, envPWD = process.env.PW
 
 export const TuiThreadCommand = cmd({
   command: "$0 [project]",
-  describe: "start opencode tui",
+  describe: "start praex tui",
   builder: (yargs) =>
     withNetworkOptions(yargs)
       .positional("project", {
         type: "string",
-        describe: "path to start opencode in",
+        describe: "path to start praex in",
       })
       .option("model", {
         type: "string",
@@ -166,6 +168,43 @@ export const TuiThreadCommand = cmd({
             events: createEventSource(client),
           }
 
+      // /afk: expose the running instance on the network so the Praex PWA on a
+      // phone can attach to this session. Always password-protected: reuse
+      // OPENCODE_SERVER_PASSWORD if set, otherwise mint a per-run secret.
+      const afkAddresses = () => {
+        const rank = (ip: string) => {
+          if (/^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ip)) return 0 // LAN
+          if (/^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(ip)) return 1 // tailnet CGNAT
+          return 2
+        }
+        return Object.values(os.networkInterfaces())
+          .flatMap((infos) => infos ?? [])
+          .filter((info) => info.family === "IPv4" && !info.internal)
+          .map((info) => info.address)
+          .sort((a, b) => rank(a) - rank(b))
+      }
+      const onExpose = async () => {
+        const username = process.env["OPENCODE_SERVER_USERNAME"] || "opencode"
+        if (external) {
+          return {
+            urls: [transport.url],
+            username,
+            password: process.env["OPENCODE_SERVER_PASSWORD"] || undefined,
+          }
+        }
+        const password = process.env["OPENCODE_SERVER_PASSWORD"] || randomBytes(9).toString("base64url")
+        process.env["OPENCODE_SERVER_PASSWORD"] = password
+        const started = await client.call("server", { port: 0, hostname: "0.0.0.0", password })
+        const port = new URL(started.url).port
+        const addresses = afkAddresses()
+        const urls = addresses.length ? addresses.map((ip) => `http://${ip}:${port}/`) : [started.url]
+        return { urls, username, password }
+      }
+      const onExposeStop = async () => {
+        if (external) return
+        await client.call("serverStop", undefined)
+      }
+
       try {
         await validateSession({
           url: transport.url,
@@ -195,6 +234,8 @@ export const TuiThreadCommand = cmd({
               const server = await client.call("snapshot", undefined)
               return [tui, server]
             },
+            onExpose,
+            onExposeStop,
             config,
             pluginHost: createLegacyTuiPluginHost(),
             directory: cwd,

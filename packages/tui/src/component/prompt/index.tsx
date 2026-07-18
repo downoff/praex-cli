@@ -1344,22 +1344,23 @@ export function Prompt(props: PromptProps) {
       <box ref={(r: BoxRenderable) => (anchor = r)} visible={props.visible !== false} width="100%">
         <box
           width="100%"
-          border={["left"]}
+          border={["top", "right", "bottom", "left"]}
           borderColor={borderHighlight()}
           customBorderChars={{
-            ...SplitBorder.customBorderChars,
-            bottomLeft: "╹",
+            topLeft: "╭",
+            topRight: "╮",
+            bottomLeft: "╰",
+            bottomRight: "╯",
+            horizontal: "─",
+            vertical: "│",
+            bottomT: "┴",
+            topT: "┬",
+            cross: "┼",
+            leftT: "├",
+            rightT: "┤",
           }}
         >
-          <box
-            paddingLeft={2}
-            paddingRight={2}
-            paddingTop={1}
-            flexShrink={0}
-            backgroundColor={theme.backgroundElement}
-            flexGrow={1}
-            width="100%"
-          >
+          <box paddingLeft={2} paddingRight={2} flexShrink={0} flexGrow={1} width="100%">
             <textarea
               width="100%"
               placeholder={placeholderText()}
@@ -1433,7 +1434,7 @@ export function Prompt(props: PromptProps) {
               cursorColor={props.disabled ? theme.backgroundElement : theme.text}
               syntaxStyle={syntax()}
             />
-            <box flexDirection="row" flexShrink={0} paddingTop={1} gap={1} justifyContent="space-between">
+            <box flexDirection="row" flexShrink={0} gap={1} justifyContent="space-between">
               <box flexDirection="row" gap={1}>
                 <Show when={local.agent.current()} fallback={<box height={1} />}>
                   {(agent) => (
@@ -1472,32 +1473,6 @@ export function Prompt(props: PromptProps) {
               </Show>
             </box>
           </box>
-        </box>
-        <box
-          height={1}
-          border={["left"]}
-          borderColor={borderHighlight()}
-          customBorderChars={{
-            ...EmptyBorder,
-            vertical: theme.backgroundElement.a !== 0 ? "╹" : " ",
-          }}
-        >
-          <box
-            height={1}
-            border={["bottom"]}
-            borderColor={theme.backgroundElement}
-            customBorderChars={
-              theme.backgroundElement.a !== 0
-                ? {
-                    ...EmptyBorder,
-                    horizontal: "▀",
-                  }
-                : {
-                    ...EmptyBorder,
-                    horizontal: " ",
-                  }
-            }
-          />
         </box>
         <box width="100%" flexDirection="row" justifyContent="space-between">
           <Switch>
