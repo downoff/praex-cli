@@ -25,6 +25,7 @@ import { DialogServerV2 } from "@/components/settings-v2/dialog-server-v2"
 import { ServerConnection, useServer } from "@/context/server"
 import { sessionHasOpenTab, useTabs } from "@/context/tabs"
 import { useServerSync, type ServerSync } from "@/context/server-sync"
+import { useServerSDK } from "@/context/server-sdk"
 import { useLanguage } from "@/context/language"
 import { useNotification } from "@/context/notification"
 import {
@@ -176,6 +177,32 @@ function HomeDesign() {
       return null
     },
   }))
+
+  // /afk smoothness: a fresh device has no opened projects, so this page renders
+  // "No sessions found" even when the server is full of sessions — praex is often
+  // launched outside git repos, so everything lands in the "global" pseudo-project,
+  // which never appears as an openable project row. Seed the opened-project list
+  // from the server's own recent sessions instead of making the phone user hunt.
+  const serverSdk = useServerSDK()
+  let seededServers = new Set<string>()
+  createEffect(() => {
+    const ctx = focusedServerCtx()
+    const conn = focusedServer()
+    if (!ctx || !conn) return
+    const key = ServerConnection.key(conn)
+    if (seededServers.has(key)) return
+    if (projects().length > 0) return
+    seededServers.add(key)
+    void serverSdk()
+      .client.session.list({ roots: true, limit: 20 })
+      .then((res) => {
+        const dirs = [...new Set((res.data ?? []).map((s) => s.directory).filter(Boolean))].slice(0, 5)
+        for (const dir of dirs) ctx.projects.open(dir)
+      })
+      .catch(() => {
+        seededServers.delete(key)
+      })
+  })
 
   const projectByID = createMemo(
     () => new Map(projects().flatMap((project) => (project.id ? [[project.id, project] as const] : []))),
