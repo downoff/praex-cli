@@ -1546,7 +1546,7 @@ function AssistantMessage(props: { message: AssistantMessage; parts: Part[]; las
                 }}
               >
                 ▣{" "}
-              </span>{" "}
+              </span>
               <span style={{ fg: theme.textMuted }}>{Locale.titlecase(props.message.mode)}</span>
               <span style={{ fg: theme.textMuted }}> · {model()}</span>
               <Show when={duration()}>
