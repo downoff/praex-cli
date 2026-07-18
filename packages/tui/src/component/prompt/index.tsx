@@ -1460,6 +1460,14 @@ export function Prompt(props: PromptProps) {
                               </span>
                             </text>
                           </Show>
+                          <Show when={local.permission.current() === "auto"}>
+                            <text fg={fadeColor(theme.textMuted, modelMetaAlpha())}>·</text>
+                            <text>
+                              <span style={{ fg: fadeColor(theme.warning, modelMetaAlpha()), bold: true }}>
+                                ⏵⏵ auto
+                              </span>
+                            </text>
+                          </Show>
                         </box>
                       </Show>
                     </>

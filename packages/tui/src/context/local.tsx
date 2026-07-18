@@ -501,6 +501,50 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
 
     const session = createSession()
 
+    function createPermissionMode() {
+      // Claude Code-style runtime permission modes. The default agent ships "*": "allow", so
+      // the TUI enforces "manual" by pushing session-level ask rules for sensitive tools —
+      // session rules are evaluated after agent rules and matching is last-wins, so the most
+      // recently synced mode decides. "auto" restores blanket allow. Headless `praex run` is
+      // untouched. Known v1 softening: session rules also out-rank the plan agent's edit deny.
+      // write.ts + apply_patch.ts ask as "edit"; shell.ts asks as "bash" (ShellID.ToolID)
+      const SENSITIVE = ["edit", "bash", "task", "webfetch", "websearch"]
+      const RULES = {
+        manual: SENSITIVE.map((permission) => ({ permission, pattern: "*", action: "ask" as const })),
+        auto: [{ permission: "*", pattern: "*", action: "allow" as const }],
+      }
+      const [store, setStore] = createStore({
+        current: "manual" as keyof typeof RULES,
+        synced: {} as Record<string, string | undefined>,
+      })
+      return {
+        current() {
+          return store.current
+        },
+        cycle() {
+          setStore("current", store.current === "manual" ? "auto" : "manual")
+        },
+        sync(sessionID: string) {
+          const mode = store.current
+          if (store.synced[sessionID] === mode) return
+          setStore("synced", sessionID, mode)
+          sdk.client.session
+            .update({ sessionID, permission: RULES[mode] })
+            .then((result: unknown) => {
+              if (result && typeof result === "object" && "error" in result && result.error)
+                setStore("synced", sessionID, undefined)
+            })
+            .catch(() => setStore("synced", sessionID, undefined))
+        },
+      }
+    }
+
+    const permission = createPermissionMode()
+
+    createEffect(() => {
+      if (route.data.type === "session") permission.sync(route.data.sessionID)
+    })
+
     const mcp = {
       isEnabled(name: string) {
         const status = sync.data.mcp[name]
@@ -534,6 +578,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
       agent,
       mcp,
       session,
+      permission,
     }
     return result
   },

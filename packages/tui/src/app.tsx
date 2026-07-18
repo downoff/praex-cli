@@ -109,6 +109,7 @@ const appBindingCommands = [
   "mcp.list",
   "agent.cycle",
   "agent.cycle.reverse",
+  "permission.mode.cycle",
   "variant.cycle",
   "variant.list",
   "provider.connect",
@@ -735,6 +736,23 @@ function App(props: {
         hidden: true,
         run: () => {
           local.agent.move(-1)
+        },
+      },
+      {
+        name: "permission.mode.cycle",
+        title: "Cycle permission mode",
+        category: "Agent",
+        slashName: "mode",
+        run: () => {
+          local.permission.cycle()
+          toast.show({
+            variant: local.permission.current() === "auto" ? "warning" : "info",
+            message:
+              local.permission.current() === "auto"
+                ? "Auto mode — tools run without asking"
+                : "Manual mode — sensitive tools ask first",
+            duration: 2000,
+          })
         },
       },
       {
