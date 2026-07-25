@@ -51,36 +51,40 @@ import Layout from "@/pages/layout"
 import { ErrorPage } from "./pages/error"
 import { useCheckServerHealth } from "./utils/server-health"
 
-const HomeRoute = lazy(() => import("@/pages/home"))
-const Session = lazy(() => import("@/pages/session"))
-const NewSession = lazy(() => import("@/pages/new-session"))
+// The three primary routes are imported statically, NOT lazily. In prod builds a
+// lazy route's memo can resolve after the shell swap and re-render under a
+// disposed owner, losing every context — the app then paints a full-screen
+// "<X> context must be used within a context provider" error page over an
+// otherwise-working tree (seen on /afk: home fatal on load, session fatal on
+// tap). The PWA is served from the local binary, so splitting these buys no
+// load time anyway; heavy leaf chunks (syntax grammars, themes) stay lazy.
+import HomeRoute from "@/pages/home"
+import Session from "@/pages/session"
+import NewSession from "@/pages/new-session"
 
-const SessionRoute = Object.assign(
-  () => {
-    const settings = useSettings()
-    const params = useParams()
-    const [search] = useSearchParams<{ draftId?: string; prompt?: string }>()
-    const sdk = useSDK()
-    const server = useServer()
-    const tabs = useTabs()
+const SessionRoute = () => {
+  const settings = useSettings()
+  const params = useParams()
+  const [search] = useSearchParams<{ draftId?: string; prompt?: string }>()
+  const sdk = useSDK()
+  const server = useServer()
+  const tabs = useTabs()
 
-    // When the new layout is enabled, the legacy new-session route (/:dir/session with no id)
-    // is replaced by a draft at /new-session?draftId=…
-    createEffect(() => {
-      if (!settings.general.newLayoutDesigns()) return
-      if (params.id || search.draftId) return
-      if (!tabs.ready() || !sdk().directory) return
-      tabs.newDraft({ server: server.key, directory: sdk().directory }, search.prompt)
-    })
+  // When the new layout is enabled, the legacy new-session route (/:dir/session with no id)
+  // is replaced by a draft at /new-session?draftId=…
+  createEffect(() => {
+    if (!settings.general.newLayoutDesigns()) return
+    if (params.id || search.draftId) return
+    if (!tabs.ready() || !sdk().directory) return
+    tabs.newDraft({ server: server.key, directory: sdk().directory }, search.prompt)
+  })
 
-    return (
-      <SessionProviders>
-        <Session />
-      </SessionProviders>
-    )
-  },
-  { preload: Session.preload },
-)
+  return (
+    <SessionProviders>
+      <Session />
+    </SessionProviders>
+  )
+}
 
 // Wraps the non-draft routes. They are gated on (and keyed to) the globally selected
 // server via ServerKey, then provide the server-scoped shell (Permission/Layout/

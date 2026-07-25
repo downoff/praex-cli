@@ -1,5 +1,6 @@
 export * as FileSystemSearch from "./search"
 
+import fs from "fs"
 import path from "path"
 import { Context, Effect, Layer, Scope } from "effect"
 import { Fff } from "#fff"
@@ -137,7 +138,21 @@ export const fffLayer = Layer.effect(
         }),
       catch: (cause) => cause,
     }).pipe(Effect.orDie)
-    if (!result.ok) return yield* Effect.die(result.error)
+    if (!result.ok) {
+      // A deleted/renamed project directory must not kill instance bootstrap:
+      // the app bootstraps every known project, and one stale path 500-ing
+      // /agent takes down the whole home screen. Degrade to empty results.
+      const missing = yield* Effect.sync(() => !fs.existsSync(location.directory))
+      if (!missing) return yield* Effect.die(result.error)
+      yield* Effect.logWarning("file search disabled: project directory missing", {
+        directory: location.directory,
+      })
+      return Service.of({
+        glob: () => Effect.succeed([]),
+        grep: () => Effect.succeed([]),
+        find: () => Effect.succeed([]),
+      })
+    }
     yield* Effect.addFinalizer(() => Effect.sync(() => result.value.destroy()).pipe(Effect.ignore))
     return Service.of({
       glob: (input) =>
