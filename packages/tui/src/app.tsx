@@ -43,6 +43,7 @@ import { DialogStatus } from "./component/dialog-status"
 import { DialogThemeList } from "./component/dialog-theme-list"
 import { DialogHelp } from "./ui/dialog-help"
 import { DialogAfk } from "./component/dialog-afk"
+import { DialogUsage } from "./component/dialog-usage"
 import { DialogAgent } from "./component/dialog-agent"
 import { DialogSessionList } from "./component/dialog-session-list"
 import { DialogWorkspaceList } from "./component/dialog-workspace-list"
@@ -846,11 +847,32 @@ function App(props: {
         run: async () => {
           try {
             const info = await props.onExpose!()
+            toast.show({
+              variant: "success",
+              message: "AFK is now active — control this session from your phone or the web",
+              duration: 4000,
+            })
             dialog.replace(() => <DialogAfk info={info} onStop={props.onExposeStop} />)
           } catch (error) {
             toast.show({ variant: "error", message: errorMessage(error), duration: 5000 })
             dialog.clear()
           }
+        },
+      },
+      {
+        name: "session.usage",
+        title: "Usage — tokens & cost this session",
+        slashName: "usage",
+        category: "Session",
+        enabled: () => route.data.type === "session",
+        run: () => {
+          if (route.data.type !== "session") {
+            toast.show({ variant: "info", message: "Open a session to see its usage", duration: 3000 })
+            dialog.clear()
+            return
+          }
+          const sessionID = route.data.sessionID
+          dialog.replace(() => <DialogUsage sessionID={sessionID} />)
         },
       },
       {

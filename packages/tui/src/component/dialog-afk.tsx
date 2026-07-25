@@ -66,14 +66,20 @@ export function DialogAfk(props: { info: AfkInfo; onStop?: () => Promise<void> }
   return (
     <box paddingLeft={2} paddingRight={2} gap={1}>
       <box flexDirection="row" justifyContent="space-between">
-        <text attributes={TextAttributes.BOLD} fg={theme.text}>
-          AFK — remote control
-        </text>
+        <box flexDirection="row" gap={1}>
+          <text fg={theme.success}>●</text>
+          <text attributes={TextAttributes.BOLD} fg={theme.text}>
+            AFK is now active
+          </text>
+        </box>
         <text fg={theme.textMuted} onMouseUp={() => dialog.clear()}>
           esc
         </text>
       </box>
-      <text fg={theme.textMuted}>Scan from your phone (same Wi-Fi or tailnet), then add to home screen.</text>
+      <text fg={theme.textMuted}>
+        Control this session remotely — prompt, switch models, and approve permissions from your phone or the
+        web, like a remote. Scan below (same Wi-Fi or tailnet), then add to home screen.
+      </text>
       <box alignSelf="flex-start" backgroundColor="#FFFFFF" paddingLeft={2} paddingRight={2}>
         <For each={qr()}>{(line) => <text fg="#000000">{line}</text>}</For>
       </box>

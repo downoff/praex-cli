@@ -24,6 +24,7 @@
   cursor: default;
   user-select: none;
   opacity: 0;
+  pointer-events: none;
 }
 
 .scroll-view__thumb::after {
@@ -59,4 +60,5 @@
 
 .scroll-view__thumb[data-visible="true"] {
   opacity: 1;
+  pointer-events: auto;
 }
