@@ -15,6 +15,7 @@ import type { JSONSchema7 } from "@ai-sdk/provider"
 import { SessionCompaction } from "./compaction"
 import { SystemPrompt } from "./system"
 import { Instruction } from "./instruction"
+import { Memory } from "./memory"
 import { Plugin } from "../plugin"
 import MAX_STEPS from "../session/prompt/max-steps.txt"
 import { ToolRegistry } from "@/tool/registry"
@@ -1136,6 +1137,7 @@ export const layer = Layer.effect(
         const ctx = yield* InstanceState.context
         let structured: unknown
         let step = 0
+        let emptySteps = 0
         const session = yield* sessions.get(sessionID).pipe(Effect.orDie)
 
         while (true) {
@@ -1179,6 +1181,25 @@ export const layer = Layer.effect(
               })
             }
             yield* Effect.logInfo("exiting loop", { "session.id": sessionID })
+            break
+          }
+
+          // Circuit breaker (07-24): some OpenAI-compat servers/parsers return
+          // finish="tool-calls" (or no finish at all) with NO actual tool calls and
+          // NO text — e.g. a serve-side tool parser swallowing malformed tool syntax.
+          // Without this guard the loop re-prompts forever on empty assistant turns
+          // (observed live: 16 consecutive empty steps on faber-i until manual abort).
+          const assistantEmpty =
+            lastAssistant !== undefined &&
+            lastUser.id < lastAssistant.id &&
+            !hasToolCalls &&
+            !(lastAssistantMsg?.parts.some((part) => part.type === "text" && part.text.trim().length > 0) ?? false)
+          emptySteps = assistantEmpty ? emptySteps + 1 : 0
+          if (emptySteps >= 2) {
+            yield* Effect.logWarning("exiting loop: consecutive empty assistant turns", {
+              "session.id": sessionID,
+              emptySteps,
+            })
             break
           }
 
@@ -1324,13 +1345,14 @@ export const layer = Layer.effect(
 
             yield* plugin.trigger("experimental.chat.messages.transform", {}, { messages: msgs })
 
-            const [skills, env, instructions, modelMsgs] = yield* Effect.all([
+            const [skills, env, instructions, memory, modelMsgs] = yield* Effect.all([
               sys.skills(agent),
               sys.environment(model),
               instruction.system().pipe(Effect.orDie),
+              Memory.system().pipe(Effect.orElseSucceed(() => undefined)),
               MessageV2.toModelMessagesEffect(msgs, model),
             ])
-            const system = [...env, ...instructions, ...(skills ? [skills] : [])]
+            const system = [...env, ...instructions, ...(memory ? [memory] : []), ...(skills ? [skills] : [])]
             const format = lastUser.format ?? { type: "text" as const }
             if (format.type === "json_schema") system.push(STRUCTURED_OUTPUT_SYSTEM_PROMPT)
             const result = yield* handle.process({
