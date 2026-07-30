@@ -1792,12 +1792,22 @@ function GenericTool(props: ToolProps) {
   const ctx = use()
   const output = createMemo(() => props.output?.trim() ?? "")
   const [expanded, setExpanded] = createSignal(false)
-  const maxLines = 3
+  const maxLines = 10
   const maxChars = createMemo(() => maxLines * Math.max(20, ctx.width - 6))
   const collapsed = createMemo(() => collapseToolOutput(output(), maxLines, maxChars()))
+  // Folded by default, same contract as Shell — see the comment there.
+  const lineCount = createMemo(() => (output() ? output().split("\n").length : 0))
+  const trivial = createMemo(() => lineCount() === 1 && output().length <= Math.max(20, ctx.width - 8))
+  const foldable = createMemo(() => lineCount() > 0 && !trivial())
   const limited = createMemo(() => {
-    if (expanded() || !collapsed().overflow) return output()
-    return collapsed().output
+    if (!expanded()) return output()
+    return collapsed().overflow ? collapsed().output : output()
+  })
+  const summary = createMemo(() => {
+    const n = lineCount()
+    const label = n === 1 ? "1 line" : `${n} lines`
+    if (!expanded()) return `▸ ${label}`
+    return collapsed().overflow ? `▾ ${label} · showing first ${maxLines}` : `▾ ${label}`
   })
 
   return (
@@ -1812,12 +1822,14 @@ function GenericTool(props: ToolProps) {
       <BlockTool
         title={`# ${props.tool} ${input(props.input)}`}
         part={props.part}
-        onClick={collapsed().overflow ? () => setExpanded((prev) => !prev) : undefined}
+        onClick={foldable() ? () => setExpanded((prev) => !prev) : undefined}
       >
-        <box gap={1}>
-          <text fg={theme.text}>{limited()}</text>
-          <Show when={collapsed().overflow}>
-            <text fg={theme.textMuted}>{expanded() ? "Click to collapse" : "Click to expand"}</text>
+        <box>
+          <Show when={trivial() || expanded()}>
+            <text fg={theme.text}>{limited()}</text>
+          </Show>
+          <Show when={foldable()}>
+            <text fg={theme.textMuted}>{summary()}</text>
           </Show>
         </box>
       </BlockTool>
@@ -2051,9 +2063,23 @@ function Shell(props: ToolProps) {
   const maxLines = 10
   const maxChars = createMemo(() => maxLines * Math.max(20, ctx.width - 6))
   const collapsed = createMemo(() => collapseToolOutput(output(), maxLines, maxChars()))
+
+  // Shell output is FOLDED BY DEFAULT (a session of df/free/uptime calls used to render every
+  // byte inline and buried the actual conversation). Trivial one-liners that already fit the
+  // width stay visible — folding "OK" behind a click is friction, not polish. Everything else
+  // shows a compact "N lines" affordance and opens on click, closes on the next one.
+  const lineCount = createMemo(() => (output() ? output().split("\n").length : 0))
+  const trivial = createMemo(() => lineCount() === 1 && output().length <= Math.max(20, ctx.width - 8))
+  const foldable = createMemo(() => lineCount() > 0 && !trivial())
   const limited = createMemo(() => {
-    if (expanded() || !collapsed().overflow) return output()
-    return collapsed().output
+    if (!expanded()) return output()
+    return collapsed().overflow ? collapsed().output : output()
+  })
+  const summary = createMemo(() => {
+    const n = lineCount()
+    const label = n === 1 ? "1 line" : `${n} lines`
+    if (!expanded()) return `▸ ${label}`
+    return collapsed().overflow ? `▾ ${label} · showing first ${maxLines}` : `▾ ${label}`
   })
 
   const workdirDisplay = createMemo(() => {
@@ -2077,15 +2103,15 @@ function Shell(props: ToolProps) {
           title={title()}
           part={props.part}
           spinner={isRunning()}
-          onClick={collapsed().overflow ? () => setExpanded((prev) => !prev) : undefined}
+          onClick={foldable() ? () => setExpanded((prev) => !prev) : undefined}
         >
-          <box gap={1}>
+          <box>
             <text fg={theme.text}>$ {stringValue(props.input.command)}</text>
-            <Show when={output()}>
+            <Show when={output() && (trivial() || expanded())}>
               <text fg={theme.text}>{limited()}</text>
             </Show>
-            <Show when={collapsed().overflow}>
-              <text fg={theme.textMuted}>{expanded() ? "Click to collapse" : "Click to expand"}</text>
+            <Show when={foldable()}>
+              <text fg={theme.textMuted}>{summary()}</text>
             </Show>
           </box>
         </BlockTool>
