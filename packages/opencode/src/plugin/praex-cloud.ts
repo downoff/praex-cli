@@ -227,7 +227,7 @@ export async function PraexCloudAuthPlugin(input: PluginInput): Promise<Hooks> {
                 refreshPromise = exchangeRefreshToken(current.refresh)
                   .then(async (tokens) => {
                     if (!tokens)
-                      throw new Error("Praex Cloud sign-in expired — run `praex auth login` and pick Praex Cloud")
+                      throw new Error("Praex sign-in expired — run `praex auth login` and pick Praex")
                     await input.client.auth.set({
                       path: { id: "praex-cloud" },
                       body: {
