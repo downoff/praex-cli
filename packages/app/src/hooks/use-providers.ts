@@ -5,6 +5,11 @@ import { Iterable, pipe } from "effect"
 import { createMemo } from "solid-js"
 
 export const popularProviders = [
+  // Praex tiers first — same pinning as the TUI's PRAEX_PROVIDERS
+  "praex-cloud",
+  "lucia",
+  "glm",
+  "lucia-lite",
   "opencode",
   "opencode-go",
   "anthropic",
