@@ -61,7 +61,7 @@ export function DialogModel(props: { providerID?: string }) {
     // Our own model tiers (lite/mid/frontier — three providers all display-named "Praex" so
     // they merge into one category) pin to the top of /models. opencode gateway next
     // (free + subscription models), then everything else. Personal-phase default.
-    const PRAEX_PROVIDERS = new Set(["lucia", "lucia-lite", "glm"])
+    const PRAEX_PROVIDERS = new Set(["lucia", "lucia-lite", "glm", "praex-cloud"])
     const providerOptions = pipe(
       sync.data.provider,
       sortBy(
