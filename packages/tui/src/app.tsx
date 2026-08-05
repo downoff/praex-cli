@@ -832,7 +832,7 @@ function App(props: {
         name: "docs.open",
         title: "Open docs",
         run: () => {
-          open("https://opencode.ai/docs").catch(() => {})
+          open("https://praex.ai").catch(() => {})
           dialog.clear()
         },
         category: "System",
