@@ -55,7 +55,11 @@ import { ProviderV2 } from "@opencode-ai/core/provider"
 import { ModelV2 } from "@opencode-ai/core/model"
 
 export function webSearchEnabled(providerID: ProviderV2.ID, flags = { exa: false, parallel: false }) {
-  return providerID === ProviderV2.ID.opencode || flags.exa || flags.parallel
+  // Praex models (hosted praex-cloud and the praex tailnet tiers) get web search out
+  // of the box — the tool runs client-side, so any tool-calling model can use it.
+  return (
+    providerID === ProviderV2.ID.opencode || providerID.startsWith("praex") || flags.exa || flags.parallel
+  )
 }
 
 type TaskDef = Tool.InferDef<typeof TaskTool>
