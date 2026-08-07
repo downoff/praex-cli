@@ -26,3 +26,21 @@ jobs:
 
       - name: Typecheck
         run: bun turbo typecheck
+
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Setup Bun
+        uses: ./.github/actions/setup-bun
+
+      - name: Build single binary
+        working-directory: packages/opencode
+        run: bun run script/build.ts --single
+
+      - name: Smoke test binary
+        working-directory: packages/opencode
+        run: ./dist/opencode-linux-x64/bin/opencode --version
