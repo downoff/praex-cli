@@ -490,6 +490,47 @@ export const ProvidersLoginCommand = effectCmd({
   }),
 })
 
+// Top-level `praex login` / `praex logout`: the Praex account flow directly, the way
+// `claude login` signs into Anthropic. Other providers keep the `praex auth` picker.
+export const LoginCommand = effectCmd({
+  command: "login",
+  describe: "sign in to Praex · Velox II free with your Google account",
+  builder: (yargs: Argv) =>
+    yargs.option("method", {
+      alias: ["m"],
+      describe: "login method label (skips method selection)",
+      type: "string",
+    }),
+  handler: Effect.fn("Cli.login")(function* (args) {
+    const pluginSvc = yield* Plugin.Service
+    UI.empty()
+    yield* Prompt.intro("Sign in to Praex")
+    const hooks = yield* pluginSvc.list()
+    const plugin = hooks.findLast((x) => x.auth?.provider === "praex-cloud")
+    if (!plugin?.auth) return yield* fail("Praex sign-in is unavailable in this build")
+    yield* handlePluginAuth({ auth: plugin.auth }, "praex-cloud", args.method)
+  }),
+})
+
+export const LogoutCommand = effectCmd({
+  command: "logout",
+  describe: "sign out of Praex",
+  instance: false,
+  handler: Effect.fn("Cli.logout")(function* () {
+    const authSvc = yield* Auth.Service
+    UI.empty()
+    yield* Prompt.intro("Sign out of Praex")
+    const all = yield* Effect.orDie(authSvc.all())
+    if (!all["praex-cloud"]) {
+      yield* Prompt.log.info("Not signed in to Praex. `praex auth logout` manages other credentials.")
+      yield* Prompt.outro("Done")
+      return
+    }
+    yield* Effect.orDie(authSvc.remove("praex-cloud"))
+    yield* Prompt.outro("Signed out")
+  }),
+})
+
 export const ProvidersLogoutCommand = effectCmd({
   command: "logout [provider]",
   describe: "log out from a configured provider",

@@ -128,6 +128,37 @@ export const TuiThreadCommand = cmd({
       }
       const cwd = Filesystem.resolve(process.cwd())
 
+      // First run: offer the Praex sign-in before the TUI takes the terminal.
+      // Shown once per machine (state flag), and only while no credential exists.
+      if (process.stdin.isTTY && process.stdout.isTTY) {
+        const { Global } = await import("@opencode-ai/core/global")
+        const flag = path.join(Global.Path.state, "first-run")
+        if (!(await Filesystem.exists(flag))) {
+          await Bun.write(flag, new Date().toISOString())
+          const auth = await Bun.file(path.join(Global.Path.data, "auth.json"))
+            .json()
+            .catch(() => ({}))
+          if (!auth || typeof auth !== "object" || Object.keys(auth).length === 0) {
+            console.log()
+            console.log("  Welcome to Praex.")
+            console.log("  Velox II is free · sign in with your Google account to start.")
+            console.log("  Bringing your own keys instead? Skip now, `praex auth login` any time.")
+            console.log()
+            const readline = await import("node:readline/promises")
+            const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
+            const answer = await rl.question("  Press Enter to sign in with Google, or type s to skip: ")
+            rl.close()
+            if (!answer.trim().toLowerCase().startsWith("s")) {
+              const login =
+                typeof OPENCODE_WORKER_PATH !== "undefined"
+                  ? [process.execPath, "login"]
+                  : [process.execPath, process.argv[1], "login"]
+              await Bun.spawn({ cmd: login, stdio: ["inherit", "inherit", "inherit"] }).exited
+            }
+          }
+        }
+      }
+
       const worker = new Worker(file)
       const client = Rpc.client<typeof rpc>(worker)
       const reload = () => {
