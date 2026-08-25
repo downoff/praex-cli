@@ -24,7 +24,7 @@ curl -fsSL https://praex.ai/install.sh | bash
 Then sign in and go:
 
 ```bash
-praex auth login
+praex login
 praex
 ```
 
