@@ -187,16 +187,13 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         Boolean(yield* dep.auth(input.id)) ||
         Boolean((yield* dep.config()).provider?.["opencode"]?.options?.apiKey)
 
-      if (!ok) {
-        for (const [key, value] of Object.entries(input.models)) {
-          if (value.cost.input === 0) continue
-          delete input.models[key]
-        }
-      }
+      // Praex: without a key, upstream exposes its anonymous free-tier models and they
+      // headline a fresh install. Keep the provider available for BYOK, never autoloaded.
+      if (!ok) return { autoload: false }
 
       return {
         autoload: Object.keys(input.models).length > 0,
-        options: ok ? {} : { apiKey: "public" },
+        options: {},
       }
     }),
     openai: () =>
@@ -1944,7 +1941,9 @@ export const defaultLayer = Layer.suspend(() =>
   ),
 )
 
-const priority = ["gpt-5", "claude-sonnet-4", "big-pickle", "gemini-3-pro"]
+// Ascending preference: sort() orders by findIndex desc, so the LAST entry wins.
+// velox last = the free Praex tier is the default model on a fresh install.
+const priority = ["gpt-5", "claude-sonnet-4", "big-pickle", "gemini-3-pro", "velox"]
 export function sort<T extends { id: string }>(models: T[]) {
   return sortBy(
     models,

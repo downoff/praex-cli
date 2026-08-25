@@ -369,7 +369,6 @@ export const ProvidersLoginCommand = effectCmd({
     const hooks = yield* pluginSvc.list()
 
     const priority: Record<string, number> = {
-      opencode: 0,
       openai: 1,
       "github-copilot": 2,
       google: 3,
@@ -396,17 +395,20 @@ export const ProvidersLoginCommand = effectCmd({
           label: x.name,
           value: x.id,
           hint: {
-            opencode: "recommended",
             openai: "ChatGPT Plus/Pro or API key",
-          }[x.id],
+          }[x.id] as string | undefined,
         })),
       ),
       ...pluginProviders.map((x) => ({
-        label: x.name,
+        label: x.id === "praex-cloud" ? "Praex" : x.name,
         value: x.id,
-        hint: "plugin",
+        hint: x.id === "praex-cloud" ? "recommended · Velox II free · Google sign-in" : "plugin",
       })),
     ]
+
+    // Praex first: it is the product's own hosted tier, everything else is BYOK.
+    const praexIndex = options.findIndex((x) => x.value === "praex-cloud")
+    if (praexIndex > 0) options.unshift(...options.splice(praexIndex, 1))
 
     let provider: string
     if (args.provider) {

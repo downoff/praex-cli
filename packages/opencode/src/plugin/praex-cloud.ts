@@ -148,14 +148,34 @@ function waitForCallback(state: string): Promise<TokenResponse> {
   })
 }
 
+// The hosted tier ships in the binary: every install gets the Praex provider and
+// tiers without any config file. A user-defined praex-cloud block in config wins.
+const GATEWAY_BASE_URL = "https://praex-gateway-384599766402.us-central1.run.app/v1"
+const TIER_LIMITS = { context: 32768, output: 8192 }
+
 export async function PraexCloudAuthPlugin(input: PluginInput): Promise<Hooks> {
   return {
+    config: async (cfg) => {
+      cfg.provider ??= {}
+      if (!cfg.provider["praex-cloud"]) {
+        cfg.provider["praex-cloud"] = {
+          npm: "@ai-sdk/openai-compatible",
+          name: "Praex",
+          options: { baseURL: GATEWAY_BASE_URL },
+          models: {
+            "velox-ii-baked": { name: "Velox II · free", limit: { ...TIER_LIMITS } },
+            "faber-i": { name: "Faber I · Pro", limit: { ...TIER_LIMITS } },
+            "lucia-i": { name: "Lucia I · Max", limit: { ...TIER_LIMITS } },
+          },
+        }
+      }
+    },
     auth: {
       provider: "praex-cloud",
       methods: [
         {
           type: "oauth",
-          label: "Praex account — sign in with Google (browser)",
+          label: "Praex account · sign in with Google (browser)",
           async authorize() {
             const port = await startCallbackServer()
             const state = Buffer.from(crypto.getRandomValues(new Uint8Array(24))).toString("base64url")
@@ -186,7 +206,7 @@ export async function PraexCloudAuthPlugin(input: PluginInput): Promise<Hooks> {
         },
         {
           type: "oauth",
-          label: "Connect code — paste from praex.ai (SSH / headless)",
+          label: "Connect code · paste from praex.ai (SSH / headless)",
           async authorize() {
             return {
               url: SIGNIN_URL,
