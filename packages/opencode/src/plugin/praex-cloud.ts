@@ -58,14 +58,28 @@ interface PendingSignIn {
   reject: (error: Error) => void
 }
 
+// Sign-in can take a while on a fresh machine (password, 2FA, consent screens).
+// The window must comfortably outlast all of that, or a perfectly good callback
+// arrives after the state was wiped and reads as "stale".
+const SIGNIN_TIMEOUT_MS = 15 * 60 * 1000
+
 let callbackServer: ReturnType<typeof createServer> | undefined
-let pendingSignIn: PendingSignIn | undefined
+let callbackPort: number | undefined
+// Keyed by state so overlapping sign-ins (first-run child plus a manual retry)
+// each keep their own slot instead of silently invalidating each other.
+const pendingSignIns = new Map<string, PendingSignIn>()
+// Completed states render the same result page again on reload/prefetch instead
+// of a scary stale error after a successful sign-in.
+const finishedSignIns = new Map<string, Promise<boolean>>()
+
+const STALE_MESSAGE =
+  "This sign-in link has expired. Run <code>praex login</code> in the terminal again, and finish in the newest browser tab it opens."
 
 async function startCallbackServer(): Promise<number> {
-  if (callbackServer) return CALLBACK_PORT
+  if (callbackServer && callbackPort) return callbackPort
 
-  callbackServer = createServer((req, res) => {
-    const url = new URL(req.url || "/", `http://127.0.0.1:${CALLBACK_PORT}`)
+  const server = createServer((req, res) => {
+    const url = new URL(req.url || "/", `http://127.0.0.1:${callbackPort}`)
     if (url.pathname !== "/auth/callback") {
       res.writeHead(404)
       res.end("Not found")
@@ -75,66 +89,81 @@ async function startCallbackServer(): Promise<number> {
     const state = url.searchParams.get("state")
     const code = url.searchParams.get("code")
 
-    if (!pendingSignIn || state !== pendingSignIn.state) {
+    const finished = state ? finishedSignIns.get(state) : undefined
+    if (finished) {
+      finished.then((ok) => {
+        res.writeHead(ok ? 200 : 400, { "Content-Type": "text/html" })
+        res.end(ok ? HTML_SUCCESS : HTML_ERROR("Could not verify the sign-in. Try again."))
+      })
+      return
+    }
+
+    const pending = state ? pendingSignIns.get(state) : undefined
+    if (!pending) {
       res.writeHead(400, { "Content-Type": "text/html" })
-      res.end(HTML_ERROR("Stale sign-in link. Run <code>praex auth login</code> again."))
+      res.end(HTML_ERROR(STALE_MESSAGE))
       return
     }
     if (!code) {
-      const current = pendingSignIn
-      pendingSignIn = undefined
+      pendingSignIns.delete(state!)
       res.writeHead(400, { "Content-Type": "text/html" })
       res.end(HTML_ERROR("The browser sent no credential back. Try again."))
-      current.reject(new Error("Missing connect code in callback"))
+      pending.reject(new Error("Missing connect code in callback"))
       return
     }
 
-    const current = pendingSignIn
-    pendingSignIn = undefined
+    pendingSignIns.delete(state!)
 
     // Verify the refresh token works before telling either side it succeeded.
-    exchangeRefreshToken(code)
+    const outcome = exchangeRefreshToken(code)
       .then((tokens) => {
         if (!tokens) throw new Error("Token exchange failed")
-        res.writeHead(200, { "Content-Type": "text/html" })
-        res.end(HTML_SUCCESS)
-        current.resolve(tokens)
+        pending.resolve(tokens)
+        return true
       })
       .catch((err) => {
-        res.writeHead(400, { "Content-Type": "text/html" })
-        res.end(HTML_ERROR("Could not verify the sign-in. Try again."))
-        current.reject(err instanceof Error ? err : new Error(String(err)))
+        pending.reject(err instanceof Error ? err : new Error(String(err)))
+        return false
       })
-  })
+    finishedSignIns.set(state!, outcome)
 
-  await new Promise<void>((resolve, reject) => {
-    callbackServer!.once("error", (err) => {
-      callbackServer = undefined
-      reject(err)
+    outcome.then((ok) => {
+      res.writeHead(ok ? 200 : 400, { "Content-Type": "text/html" })
+      res.end(ok ? HTML_SUCCESS : HTML_ERROR("Could not verify the sign-in. Try again."))
     })
-    callbackServer!.listen(CALLBACK_PORT, "127.0.0.1", () => resolve())
   })
 
-  return CALLBACK_PORT
+  const listenOn = (port: number) =>
+    new Promise<number>((resolve, reject) => {
+      const onError = (err: Error) => reject(err)
+      server.once("error", onError)
+      server.listen(port, "127.0.0.1", () => {
+        server.off("error", onError)
+        const address = server.address()
+        resolve(typeof address === "object" && address ? address.port : port)
+      })
+    })
+
+  // Prefer the stable port; fall back to an ephemeral one if something else
+  // holds it (another praex login, an unrelated app). The page redirects to
+  // whatever port it was given, so any port works.
+  callbackPort = await listenOn(CALLBACK_PORT).catch(() => listenOn(0))
+  callbackServer = server
+  return callbackPort
 }
 
 function stopCallbackServer() {
   callbackServer?.close(() => {})
   callbackServer = undefined
+  callbackPort = undefined
 }
 
 function waitForCallback(state: string): Promise<TokenResponse> {
   return new Promise((resolve, reject) => {
-    const timeout = setTimeout(
-      () => {
-        if (pendingSignIn?.state === state) {
-          pendingSignIn = undefined
-          reject(new Error("Sign-in timed out"))
-        }
-      },
-      5 * 60 * 1000,
-    )
-    pendingSignIn = {
+    const timeout = setTimeout(() => {
+      if (pendingSignIns.delete(state)) reject(new Error("Sign-in timed out"))
+    }, SIGNIN_TIMEOUT_MS)
+    pendingSignIns.set(state, {
       state,
       resolve: (tokens) => {
         clearTimeout(timeout)
@@ -144,7 +173,7 @@ function waitForCallback(state: string): Promise<TokenResponse> {
         clearTimeout(timeout)
         reject(error)
       },
-    }
+    })
   })
 }
 
