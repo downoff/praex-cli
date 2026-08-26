@@ -1,0 +1,82 @@
+import path from "path"
+import os from "os"
+import fs from "fs/promises"
+import { createHash } from "crypto"
+import { InstallationLocal } from "@opencode-ai/core/installation/version"
+
+// Praex release channel. praex.ai serves /dl/* straight from GCS, so a release
+// is live the moment release.sh uploads it - no site deploy involved.
+// PRAEX_DL_BASE overrides the channel for tests and future beta tracks.
+const BASE_URL = process.env["PRAEX_DL_BASE"] || "https://praex.ai/dl"
+
+export interface Manifest {
+  version: string
+  sha256: string
+}
+
+export function supported() {
+  // Local/source builds run under bun itself - overwriting process.execPath
+  // there would clobber the bun binary, never the praex install.
+  if (InstallationLocal) return false
+  return process.platform === "linux" && process.arch === "x64"
+}
+
+export async function fetchManifest(): Promise<Manifest | undefined> {
+  const res = await fetch(`${BASE_URL}/latest.json`, {
+    signal: AbortSignal.timeout(10_000),
+    headers: { "cache-control": "no-cache" },
+  }).catch(() => undefined)
+  if (!res?.ok) return undefined
+  const json: unknown = await res.json().catch(() => undefined)
+  if (!json || typeof json !== "object") return undefined
+  const { version, sha256 } = json as Record<string, unknown>
+  if (typeof version !== "string" || typeof sha256 !== "string") return undefined
+  return { version: version.replace(/^v/, ""), sha256: sha256.toLowerCase() }
+}
+
+/**
+ * Download the latest release, verify its checksum against the manifest, and
+ * atomically replace the running binary. The running process keeps its old
+ * inode; the new version applies on next launch. Returns the installed version.
+ */
+export async function apply(manifest?: Manifest): Promise<string> {
+  if (!supported()) throw new Error("praex self-update supports Linux x64 release builds only")
+  const m = manifest ?? (await fetchManifest())
+  if (!m) throw new Error("could not reach the praex release channel")
+
+  const dest = process.execPath
+  const destDir = path.dirname(dest)
+  const writable = await fs
+    .access(destDir, fs.constants.W_OK)
+    .then(() => true)
+    .catch(() => false)
+  if (!writable) throw new Error(`no write access to ${destDir}`)
+
+  const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "praex-update-"))
+  const staged = path.join(destDir, ".praex-update-staged")
+  try {
+    const res = await fetch(`${BASE_URL}/praex-linux-x64.tar.gz`, {
+      signal: AbortSignal.timeout(300_000),
+    }).catch(() => undefined)
+    if (!res?.ok) throw new Error(`download failed${res ? ` (HTTP ${res.status})` : ""}`)
+    const bytes = new Uint8Array(await res.arrayBuffer())
+    const sum = createHash("sha256").update(bytes).digest("hex")
+    if (sum !== m.sha256) throw new Error("checksum mismatch, refusing to install")
+
+    const tarball = path.join(tmp, "praex.tar.gz")
+    await Bun.write(tarball, bytes)
+    const untar = Bun.spawn({ cmd: ["tar", "xzf", tarball, "-C", tmp], stdout: "ignore", stderr: "ignore" })
+    if ((await untar.exited) !== 0) throw new Error("failed to extract release tarball")
+    const binary = path.join(tmp, "praex")
+
+    // Stage next to the destination so the final rename stays on one filesystem
+    // and is atomic even while another praex process is running.
+    await fs.copyFile(binary, staged)
+    await fs.chmod(staged, 0o755)
+    await fs.rename(staged, dest)
+    return m.version
+  } finally {
+    await fs.rm(tmp, { recursive: true, force: true }).catch(() => {})
+    await fs.rm(staged, { force: true }).catch(() => {})
+  }
+}

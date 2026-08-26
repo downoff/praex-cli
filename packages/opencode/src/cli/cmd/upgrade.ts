@@ -1,32 +1,67 @@
 import type { Argv } from "yargs"
 import { UI } from "../ui"
 import * as prompts from "@clack/prompts"
+import * as PraexUpdate from "@/installation/praex-update"
+import { InstallationVersion } from "@opencode-ai/core/installation/version"
+import semver from "semver"
 
 export const UpgradeCommand = {
-  command: "upgrade [target]",
-  describe: "upgrade praex to the latest version",
+  command: "upgrade",
+  aliases: ["update"],
+  describe: "update praex to the latest version",
   builder: (yargs: Argv) => {
-    return yargs
-      .positional("target", {
-        describe: "version to upgrade to, for ex '0.1.48' or 'v0.1.48'",
-        type: "string",
-      })
-      .option("method", {
-        alias: "m",
-        describe: "installation method to use",
-        type: "string",
-        choices: ["curl", "npm", "pnpm", "bun", "brew", "choco", "scoop"],
-      })
+    return yargs.option("force", {
+      alias: "f",
+      describe: "reinstall even if already on the latest version",
+      type: "boolean",
+    })
   },
-  handler: async (args: { target?: string; method?: string }) => {
+  handler: async (args: { force?: boolean }) => {
     UI.empty()
     UI.println(UI.logo("  "))
     UI.empty()
-    prompts.intro("Upgrade")
-    // Praex ships its own builds; the inherited upgrade path would pull a foreign
-    // upstream release over this binary. Hard-stop until praex release channels exist.
-    prompts.log.info("Praex updates ship with new Praex releases — see praex.ai for the latest.")
-    prompts.outro("Done")
-    return
+    prompts.intro("Update")
+
+    if (!PraexUpdate.supported()) {
+      if (process.platform !== "linux" || process.arch !== "x64") {
+        prompts.log.error("Self-update ships for Linux x64 for now. Grab the latest from praex.ai/download.")
+      } else {
+        prompts.log.info("This is a source build. Update with git pull instead.")
+      }
+      prompts.outro("Done")
+      return
+    }
+
+    const spinner = prompts.spinner()
+    spinner.start("Checking for updates")
+    const manifest = await PraexUpdate.fetchManifest()
+    if (!manifest) {
+      spinner.stop("Could not reach the praex release channel", 1)
+      prompts.log.error("Check your connection and try again, or reinstall from praex.ai/download.")
+      prompts.outro("Done")
+      process.exitCode = 1
+      return
+    }
+
+    const current = semver.valid(InstallationVersion) ? InstallationVersion : undefined
+    const upToDate = current && !semver.gt(manifest.version, current)
+    if (upToDate && !args.force) {
+      spinner.stop(`Already on the latest version (v${current})`)
+      prompts.outro("Done")
+      return
+    }
+
+    spinner.message(upToDate ? `Reinstalling v${manifest.version}` : `Updating to v${manifest.version}`)
+    try {
+      const version = await PraexUpdate.apply(manifest)
+      spinner.stop(`Updated to v${version}`)
+      prompts.outro("Restart praex to use the new version")
+    } catch (err) {
+      spinner.stop("Update failed", 1)
+      prompts.log.error(err instanceof Error ? err.message : String(err))
+      prompts.log.info("You can always reinstall: curl -fsSL https://praex.ai/install.sh | bash")
+      prompts.outro("Done")
+      process.exitCode = 1
+    }
   },
 }

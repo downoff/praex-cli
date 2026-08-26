@@ -123,7 +123,14 @@ export const TuiThreadCommand = cmd({
       try {
         process.chdir(next)
       } catch {
-        UI.error("Failed to change directory to " + next)
+        // A bare word that isn't a directory is almost always a mistyped
+        // command, not a project path - say so instead of a chdir error.
+        if (args.project && !args.project.includes("/") && !args.project.includes("\\")) {
+          UI.error(`'${args.project}' is not a praex command or a directory. Run praex --help to see commands.`)
+        } else {
+          UI.error("Failed to change directory to " + next)
+        }
+        process.exitCode = 1
         return
       }
       const cwd = Filesystem.resolve(process.cwd())
@@ -249,9 +256,11 @@ export const TuiThreadCommand = cmd({
         return
       }
 
+      // Delayed so the TUI has mounted its event subscription before the check
+      // can emit update-available/updated - the global bus has no replay.
       setTimeout(() => {
         client.call("checkUpgrade", { directory: cwd }).catch(() => {})
-      }, 1000).unref?.()
+      }, 5000).unref?.()
 
       try {
         const { Effect } = await import("effect")

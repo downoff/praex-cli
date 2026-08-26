@@ -184,7 +184,8 @@ export async function PraexCloudAuthPlugin(input: PluginInput): Promise<Hooks> {
             open(url).catch(() => {})
             return {
               url,
-              instructions: "Sign in with Google in the browser — the terminal picks it up automatically.",
+              instructions:
+                "Sign in with Google in the browser. The terminal picks it up automatically. Nothing happening? Press Ctrl+C, run `praex login` again and pick Connect code.",
               method: "auto" as const,
               callback: async () => {
                 try {
@@ -210,7 +211,7 @@ export async function PraexCloudAuthPlugin(input: PluginInput): Promise<Hooks> {
           async authorize() {
             return {
               url: SIGNIN_URL,
-              instructions: "Sign in with Google in any browser, then paste the connect code shown there.",
+              instructions: "Sign in with Google in any browser, then paste the connect code shown on the page.",
               method: "code" as const,
               callback: async (code: string) => {
                 const tokens = await exchangeRefreshToken(code.trim())

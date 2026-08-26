@@ -1069,8 +1069,15 @@ function App(props: {
     })
   })
 
+  event.on("installation.updated", (evt) => {
+    toast.show({
+      variant: "info",
+      message: `Praex updated to v${evt.properties.version} · restart to apply`,
+      duration: 8000,
+    })
+  })
+
   event.on("installation.update-available", async (evt) => {
-    console.log("installation.update-available", evt)
     const version = evt.properties.version
 
     const skipped = kv.get("skipped_version")
@@ -1111,7 +1118,7 @@ function App(props: {
     await DialogAlert.show(
       dialog,
       "Update Complete",
-      `Successfully updated to OpenCode v${result.data.version}. Please restart the application.`,
+      `Updated to Praex v${result.data.version}. Restart praex to use the new version.`,
     )
 
     void exit()
