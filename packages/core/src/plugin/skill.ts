@@ -23,7 +23,7 @@ export const Plugin = PluginV2.define({
           skill: new SkillV2.Info({
             name: "customize-opencode",
             description:
-              "Use ONLY when the user is editing or creating opencode's own configuration: opencode.json, opencode.jsonc, files under .opencode/, or files under ~/.config/opencode/. Also use when creating or fixing opencode agents, subagents, skills, plugins, MCP servers, or permission rules. Do not use for the user's own application code, or for any project that is not configuring opencode itself.",
+              "Use ONLY when the user is editing or creating praex's own configuration: praex.json, praex.jsonc, opencode.json(c), files under .praex/ or .opencode/, or files under ~/.config/praex/. Also use when creating or fixing praex agents, subagents, skills, plugins, MCP servers, or permission rules. Do not use for the user's own application code, or for any project that is not configuring praex itself.",
             location: AbsolutePath.make("/builtin/customize-opencode.md"),
             content: CustomizeOpencodeContent,
           }),

@@ -442,9 +442,9 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         autoload: false,
         options: {
           headers: {
-            "HTTP-Referer": "https://opencode.ai/",
-            "X-Title": "opencode",
-            "X-Source": "opencode",
+            "HTTP-Referer": "https://praex.ai/",
+            "X-Title": "praex",
+            "X-Source": "praex",
           },
         },
       }),
@@ -453,8 +453,8 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         autoload: false,
         options: {
           headers: {
-            "HTTP-Referer": "https://opencode.ai/",
-            "X-Title": "opencode",
+            "HTTP-Referer": "https://praex.ai/",
+            "X-Title": "praex",
           },
         },
       }),
@@ -463,8 +463,8 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         autoload: provider.source === "config",
         options: {
           headers: {
-            "HTTP-Referer": "https://opencode.ai/",
-            "X-Title": "opencode",
+            "HTTP-Referer": "https://praex.ai/",
+            "X-Title": "praex",
             "X-BILLING-INVOKE-ORIGIN": "OpenCode",
           },
         },
@@ -580,8 +580,8 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         autoload: false,
         options: {
           headers: {
-            "HTTP-Referer": "https://opencode.ai/",
-            "X-Title": "opencode",
+            "HTTP-Referer": "https://praex.ai/",
+            "X-Title": "praex",
           },
         },
       }),
@@ -838,8 +838,8 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         autoload: false,
         options: {
           headers: {
-            "HTTP-Referer": "https://opencode.ai/",
-            "X-Title": "opencode",
+            "HTTP-Referer": "https://praex.ai/",
+            "X-Title": "praex",
           },
         },
       }),

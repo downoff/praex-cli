@@ -55,10 +55,10 @@ export const UninstallCommand = {
     UI.empty()
     UI.println(UI.logo("  "))
     UI.empty()
-    prompts.intro("Uninstall OpenCode")
+    prompts.intro("Uninstall Praex")
 
     const method = await Installation.method()
-    prompts.log.info(`Installation method: ${method}`)
+    prompts.log.info(`Installed via: ${method === "curl" ? "praex.ai installer" : method}`)
 
     const targets = await collectRemovalTargets(args, method)
 
