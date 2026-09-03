@@ -426,7 +426,7 @@ async function resolveConfigPath(baseDir: string, global = false) {
     }
   }
 
-  // Default to opencode.json if none exist
+  // Default to praex.json if none exist
   return candidates[0]
 }
 
