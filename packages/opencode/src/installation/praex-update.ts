@@ -11,14 +11,30 @@ const BASE_URL = process.env["PRAEX_DL_BASE"] || "https://praex.ai/dl"
 
 export interface Manifest {
   version: string
+  /** checksum of the tarball for THIS platform */
   sha256: string
+  /** tarball filename for THIS platform */
+  asset: string
+}
+
+// Platforms we publish a binary for. Keyed by `${process.platform}-${process.arch}`.
+const ASSETS: Record<string, string> = {
+  "linux-x64": "praex-linux-x64.tar.gz",
+  "darwin-arm64": "praex-darwin-arm64.tar.gz",
+  "darwin-x64": "praex-darwin-x64.tar.gz",
+}
+
+const LEGACY_ASSET = "praex-linux-x64.tar.gz"
+
+function platformKey() {
+  return `${process.platform}-${process.arch}`
 }
 
 export function supported() {
   // Local/source builds run under bun itself - overwriting process.execPath
   // there would clobber the bun binary, never the praex install.
   if (InstallationLocal) return false
-  return process.platform === "linux" && process.arch === "x64"
+  return platformKey() in ASSETS
 }
 
 export async function fetchManifest(): Promise<Manifest | undefined> {
@@ -29,9 +45,27 @@ export async function fetchManifest(): Promise<Manifest | undefined> {
   if (!res?.ok) return undefined
   const json: unknown = await res.json().catch(() => undefined)
   if (!json || typeof json !== "object") return undefined
-  const { version, sha256 } = json as Record<string, unknown>
-  if (typeof version !== "string" || typeof sha256 !== "string") return undefined
-  return { version: version.replace(/^v/, ""), sha256: sha256.toLowerCase() }
+  const { version, sha256, platforms } = json as Record<string, unknown>
+  if (typeof version !== "string") return undefined
+
+  const key = platformKey()
+  const asset = ASSETS[key]
+  if (!asset) return undefined
+
+  // Preferred shape: a per-platform map. Falls back to the flat top-level
+  // sha256 (which is, and must stay, linux-x64) so a client reading a
+  // manifest published before multi-platform releases still updates.
+  const entry = (platforms as Record<string, unknown> | undefined)?.[key]
+  if (entry && typeof entry === "object") {
+    const sum = (entry as Record<string, unknown>)["sha256"]
+    if (typeof sum === "string") {
+      return { version: version.replace(/^v/, ""), sha256: sum.toLowerCase(), asset }
+    }
+  }
+  if (asset === LEGACY_ASSET && typeof sha256 === "string") {
+    return { version: version.replace(/^v/, ""), sha256: sha256.toLowerCase(), asset }
+  }
+  return undefined
 }
 
 /**
@@ -40,7 +74,7 @@ export async function fetchManifest(): Promise<Manifest | undefined> {
  * inode; the new version applies on next launch. Returns the installed version.
  */
 export async function apply(manifest?: Manifest): Promise<string> {
-  if (!supported()) throw new Error("praex self-update supports Linux x64 release builds only")
+  if (!supported()) throw new Error(`praex self-update does not ship a binary for ${platformKey()}`)
   const m = manifest ?? (await fetchManifest())
   if (!m) throw new Error("could not reach the praex release channel")
 
@@ -55,7 +89,7 @@ export async function apply(manifest?: Manifest): Promise<string> {
   const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "praex-update-"))
   const staged = path.join(destDir, ".praex-update-staged")
   try {
-    const res = await fetch(`${BASE_URL}/praex-linux-x64.tar.gz`, {
+    const res = await fetch(`${BASE_URL}/${m.asset}`, {
       signal: AbortSignal.timeout(300_000),
     }).catch(() => undefined)
     if (!res?.ok) throw new Error(`download failed${res ? ` (HTTP ${res.status})` : ""}`)

@@ -24,7 +24,7 @@ export const UpgradeCommand = {
 
     if (!PraexUpdate.supported()) {
       if (process.platform !== "linux" || process.arch !== "x64") {
-        prompts.log.error("Self-update ships for Linux x64 for now. Grab the latest from praex.ai/download.")
+        prompts.log.error(`Self-update does not ship a binary for ${process.platform}-${process.arch}. Grab the latest from praex.ai/download.`)
       } else {
         prompts.log.info("This is a source build. Update with git pull instead.")
       }

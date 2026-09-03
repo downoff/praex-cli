@@ -23,6 +23,21 @@ const skipInstall = process.argv.includes("--skip-install")
 const sourcemapsFlag = process.argv.includes("--sourcemaps")
 const plugin = createSolidTransformPlugin()
 const skipEmbedWebUi = process.argv.includes("--skip-embed-web-ui")
+// --only=linux-x64,darwin-arm64  build just the named targets. Key is
+// `<os>-<arch>` plus `-musl` / `-baseline` for those variants. Used by the
+// release script so a release builds the platforms we actually ship and
+// nothing else (a full build also emits windows and musl we do not publish).
+const onlyFlag = process.argv.find((item) => item.startsWith("--only="))?.slice("--only=".length)
+const onlyTargets = onlyFlag
+  ? new Set(
+      onlyFlag
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean),
+    )
+  : undefined
+const targetKey = (item: { os: string; arch: string; abi?: string; avx2?: false }) =>
+  [item.os, item.arch, item.abi, item.avx2 === false ? "baseline" : undefined].filter(Boolean).join("-")
 
 const createEmbeddedWebUIBundle = async () => {
   console.log(`Building Web UI to embed in the binary`)
@@ -114,7 +129,19 @@ const allTargets: {
   },
 ]
 
-const targets = singleFlag
+if (onlyTargets) {
+  const known = new Set(allTargets.map(targetKey))
+  const unknown = [...onlyTargets].filter((item) => !known.has(item))
+  if (unknown.length) {
+    console.error(`unknown --only target(s): ${unknown.join(", ")}`)
+    console.error(`known targets: ${[...known].join(", ")}`)
+    process.exit(1)
+  }
+}
+
+const targets = onlyTargets
+  ? allTargets.filter((item) => onlyTargets.has(targetKey(item)))
+  : singleFlag
   ? allTargets.filter((item) => {
       if (item.os !== process.platform || item.arch !== process.arch) {
         return false
