@@ -64,7 +64,9 @@ jobs:
         # bun does not run electron's postinstall (not in trustedDependencies), so the
         # runtime zip has to be fetched explicitly before electron-builder can package it.
         working-directory: packages/desktop
-        run: node node_modules/electron/install.js
+        # Resolve through Node so it works whether bun nests electron under
+        # packages/desktop/node_modules (linux/mac) or hoists it to the root (windows).
+        run: node "$(node -p "require.resolve('electron/install.js')")"
 
       - name: Prebuild (icons, metainfo, server bundle)
         working-directory: packages/desktop
