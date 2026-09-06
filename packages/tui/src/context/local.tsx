@@ -272,7 +272,12 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
         cycle(direction: 1 | -1) {
           const current = currentModel()
           if (!current) return
-          const recent = modelStore.recent
+          // Only cycle through recents a connected provider still serves; stale ids (a
+          // retired tier, a provider that was removed) are skipped, and the store is left
+          // alone so nothing is lost if the provider comes back.
+          const recent = modelStore.recent.filter((x) =>
+            Boolean(sync.data.provider.find((p) => p.id === x.providerID)?.models[x.modelID]),
+          )
           const index = recent.findIndex((x) => x.providerID === current.providerID && x.modelID === current.modelID)
           if (index === -1) return
           let next = index + direction

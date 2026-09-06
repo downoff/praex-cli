@@ -289,10 +289,9 @@ export const layer = Layer.effect(
                 }
                 return events
                   .publish(TuiEvent.ToastShow, {
-                    title: "MCP Authentication Required",
-                    message: `Server "${key}" requires a pre-registered client ID. Add clientId to your config.`,
-                    variant: "warning",
-                    duration: 8000,
+                    message: `MCP ${key} needs a clientId in your config before it can sign in`,
+                    variant: "info",
+                    duration: 6000,
                   })
                   .pipe(Effect.ignore, Effect.as(undefined))
               } else {
@@ -300,10 +299,10 @@ export const layer = Layer.effect(
                 lastStatus = { status: "needs_auth" as const }
                 return events
                   .publish(TuiEvent.ToastShow, {
-                    title: "MCP Authentication Required",
-                    message: `Server "${key}" requires authentication. Run: praex mcp auth ${key}`,
-                    variant: "warning",
-                    duration: 8000,
+                    // One quiet line, not a warning box: the server is optional until signed in.
+                    message: `MCP ${key} needs sign-in · praex mcp auth ${key}`,
+                    variant: "info",
+                    duration: 6000,
                   })
                   .pipe(Effect.ignore, Effect.as(undefined))
               }

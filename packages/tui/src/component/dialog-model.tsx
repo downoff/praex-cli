@@ -185,6 +185,16 @@ export function DialogModel(props: { providerID?: string }) {
   )
 }
 
+// Praex tiers carry their plan in the display name ("Velox II · free"); order them by plan,
+// not alphabetically, so the free tier leads. Titles without a plan suffix are unaffected.
+function tierRank(title: string) {
+  const plan = title.split("·").at(-1)?.trim().toLowerCase()
+  if (plan === "free") return 0
+  if (plan === "pro") return 1
+  if (plan === "max") return 2
+  return 3
+}
+
 export function sortModelOptions<T extends { footer?: string; releaseDate: string | number; title: string }>(
   options: T[],
   newestFirst: boolean,
@@ -193,6 +203,7 @@ export function sortModelOptions<T extends { footer?: string; releaseDate: strin
   return sortBy(
     options,
     (option) => option.footer !== "Free",
+    (option) => tierRank(option.title),
     (option) => option.title,
   )
 }

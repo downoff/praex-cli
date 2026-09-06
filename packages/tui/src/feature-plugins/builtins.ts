@@ -1,6 +1,7 @@
 import type { TuiPlugin, TuiPluginModule } from "@opencode-ai/plugin/tui"
 import HomeFooter from "./home/footer"
 import HomeTips from "./home/tips"
+import HomeGettingStarted from "./home/getting-started"
 import SidebarContext from "./sidebar/context"
 import SidebarFiles from "./sidebar/files"
 import SidebarFooter from "./sidebar/footer"
@@ -21,6 +22,7 @@ export type BuiltinTuiPlugin = Omit<TuiPluginModule, "id"> & {
 export function createBuiltinPlugins(options: { experimentalEventSystem: boolean }): BuiltinTuiPlugin[] {
   return [
     HomeFooter,
+    HomeGettingStarted,
     HomeTips,
     SidebarContext,
     SidebarMcp,

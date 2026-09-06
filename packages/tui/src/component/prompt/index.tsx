@@ -39,6 +39,7 @@ import { type AutocompleteRef, Autocomplete } from "./autocomplete"
 import { useRenderer, useTerminalDimensions, type JSX } from "@opentui/solid"
 import type { AssistantMessage, FilePart, UserMessage } from "@opencode-ai/sdk/v2"
 import { Locale } from "../../util/locale"
+import { contextUsage } from "../../util/context-usage"
 import { errorMessage } from "../../util/error"
 import { formatDuration } from "../../util/format"
 import { createColors, createFrames } from "../../ui/spinner"
@@ -206,7 +207,11 @@ export function Prompt(props: PromptProps) {
   const workspace = usePromptWorkspace(props.sessionID)
   const move = usePromptMove({ projectID: project.project, sessionID: () => props.sessionID })
   const [cursorVersion, setCursorVersion] = createSignal(0)
-  const currentProviderLabel = createMemo(() => local.model.parsed().provider)
+  // The hosted lineup's display names already carry the tier ("Velox II · free"), so the
+  // provider name would only repeat "Praex" after it; other providers keep their label.
+  const currentProviderLabel = createMemo(() =>
+    local.model.current()?.providerID === "praex-cloud" ? "" : local.model.parsed().provider,
+  )
   const hasRightContent = createMemo(() => Boolean(props.right))
 
   function promptModelWarning() {
@@ -263,15 +268,15 @@ export function Prompt(props: PromptProps) {
     const last = msg.findLast((item): item is AssistantMessage => item.role === "assistant" && item.tokens.output > 0)
     if (!last) return
 
-    const tokens =
-      last.tokens.input + last.tokens.output + last.tokens.reasoning + last.tokens.cache.read + last.tokens.cache.write
-    if (tokens <= 0) return
-
     const model = sync.data.provider.find((item) => item.id === last.providerID)?.models[last.modelID]
-    const pct = model?.limit.context ? `${Math.round((tokens / model.limit.context) * 100)}%` : undefined
+    const usage = contextUsage(
+      msg.filter((item): item is AssistantMessage => item.role === "assistant"),
+      model?.limit.context,
+    )
+    if (!usage) return
     const cost = session?.cost ?? 0
     return {
-      context: pct ? `${Locale.number(tokens)} (${pct})` : Locale.number(tokens),
+      context: usage.label,
       cost: cost > 0 ? money.format(cost) : undefined,
     }
   })

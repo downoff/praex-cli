@@ -84,7 +84,8 @@ export function Home() {
             </text>
             <Show when={local.model.ready} fallback={<text fg={theme.textMuted}> </text>}>
               <text fg={theme.textMuted}>
-                {local.model.parsed().model} · {local.model.parsed().provider}
+                {local.model.parsed().model}
+                {local.model.current()?.providerID === "praex-cloud" ? "" : ` · ${local.model.parsed().provider}`}
               </text>
             </Show>
             <text fg={theme.textMuted}>{directory()}</text>

@@ -72,7 +72,7 @@ export function resolveThreadDirectory(project?: string, envPWD = process.env.PW
 
 export const TuiThreadCommand = cmd({
   command: "$0 [project]",
-  describe: "start praex tui",
+  describe: "Praex — your own frontier models in the terminal (starts the TUI)",
   builder: (yargs) =>
     withNetworkOptions(yargs)
       .positional("project", {

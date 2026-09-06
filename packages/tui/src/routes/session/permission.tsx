@@ -35,9 +35,20 @@ function EditBody(props: { request: PermissionRequest }) {
     return typeof value === "string" ? value : ""
   })
 
+  // A diff with only additions (a new file) or only removals has nothing to put in the
+  // other column of a split view, so it rendered as a half-width block hugging one side.
+  // Those read best unified; split stays for real two-sided edits on wide terminals.
+  const twoSided = createMemo(() => {
+    const lines = diff().split("\n")
+    const added = lines.some((line) => line.startsWith("+") && !line.startsWith("+++"))
+    const removed = lines.some((line) => line.startsWith("-") && !line.startsWith("---"))
+    return added && removed
+  })
+
   const view = createMemo(() => {
     const diffStyle = config.diff_style
     if (diffStyle === "stacked") return "unified"
+    if (!twoSided()) return "unified"
     return dimensions().width > 120 ? "split" : "unified"
   })
 

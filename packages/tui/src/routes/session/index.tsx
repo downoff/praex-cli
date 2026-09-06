@@ -1678,22 +1678,100 @@ function ReasoningHeader(props: {
   )
 }
 
+// Split assistant markdown into prose and fenced-code segments so code renders inside a
+// panel (language label, panel background, left rule) instead of as bare highlighted lines
+// that are hard to tell from the prose around them. An unterminated fence while streaming
+// is treated as code so the panel appears as soon as the fence opens.
+type TextSegment = { type: "markdown"; text: string } | { type: "code"; lang: string; text: string }
+export function splitFences(input: string): TextSegment[] {
+  const out: TextSegment[] = []
+  const lines = input.split("\n")
+  let buf: string[] = []
+  let code: { lang: string; fence: string; lines: string[] } | undefined
+  const flush = () => {
+    const text = buf.join("\n").trim()
+    if (text) out.push({ type: "markdown", text })
+    buf = []
+  }
+  for (const line of lines) {
+    const open = /^\s*(`{3,}|~{3,})\s*([\w+.#-]*)\s*$/.exec(line)
+    if (!code && open) {
+      flush()
+      code = { lang: open[2] ?? "", fence: open[1]!, lines: [] }
+      continue
+    }
+    if (code) {
+      const close = /^\s*(`{3,}|~{3,})\s*$/.exec(line)
+      if (close && close[1]![0] === code.fence[0] && close[1]!.length >= code.fence.length) {
+        out.push({ type: "code", lang: code.lang, text: code.lines.join("\n") })
+        code = undefined
+        continue
+      }
+      code.lines.push(line)
+      continue
+    }
+    buf.push(line)
+  }
+  if (code) out.push({ type: "code", lang: code.lang, text: code.lines.join("\n") })
+  else flush()
+  return out
+}
+
 function TextPart(props: { last: boolean; part: TextPart; message: AssistantMessage }) {
   const ctx = use()
   const { theme, syntax } = useTheme()
+  const segments = createMemo(() => splitFences(props.part.text.trim()))
   return (
     <Show when={props.part.text.trim()}>
-      <box id={`text-${props.part.messageID}-${props.part.id}`} paddingLeft={3} marginTop={1} flexShrink={0}>
-        <markdown
-          syntaxStyle={syntax()}
-          streaming={true}
-          internalBlockMode="top-level"
-          content={props.part.text.trim()}
-          tableOptions={{ style: "grid" }}
-          conceal={ctx.conceal()}
-          fg={theme.markdownText}
-          bg={theme.background}
-        />
+      <box
+        id={`text-${props.part.messageID}-${props.part.id}`}
+        paddingLeft={3}
+        marginTop={1}
+        flexShrink={0}
+        flexDirection="column"
+        gap={1}
+      >
+        <For each={segments()}>
+          {(segment) => (
+            <Switch>
+              <Match when={segment.type === "markdown"}>
+                <markdown
+                  syntaxStyle={syntax()}
+                  streaming={true}
+                  internalBlockMode="top-level"
+                  content={segment.text}
+                  tableOptions={{ style: "grid" }}
+                  conceal={ctx.conceal()}
+                  fg={theme.markdownText}
+                  bg={theme.background}
+                />
+              </Match>
+              <Match when={segment.type === "code"}>
+                <box
+                  flexDirection="column"
+                  backgroundColor={theme.backgroundPanel}
+                  border={["left"]}
+                  borderColor={theme.border}
+                  customBorderChars={SplitBorder.customBorderChars}
+                  paddingLeft={1}
+                  paddingRight={1}
+                  flexShrink={0}
+                >
+                  <Show when={(segment as Extract<TextSegment, { type: "code" }>).lang}>
+                    <text fg={theme.textMuted}>{(segment as Extract<TextSegment, { type: "code" }>).lang}</text>
+                  </Show>
+                  <code
+                    conceal={false}
+                    fg={theme.text}
+                    filetype={(segment as Extract<TextSegment, { type: "code" }>).lang || undefined}
+                    syntaxStyle={syntax()}
+                    content={(segment as Extract<TextSegment, { type: "code" }>).text}
+                  />
+                </box>
+              </Match>
+            </Switch>
+          )}
+        </For>
       </box>
     </Show>
   )
