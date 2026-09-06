@@ -1,5 +1,8 @@
 import type { Hooks, PluginInput } from "@opencode-ai/plugin"
 import { createServer } from "http"
+import fs from "node:fs/promises"
+import path from "node:path"
+import { Global } from "@opencode-ai/core/global"
 import open from "open"
 import { OAUTH_DUMMY_KEY } from "../auth"
 
@@ -177,27 +180,118 @@ function waitForCallback(state: string): Promise<TokenResponse> {
   })
 }
 
-// The hosted tier ships in the binary: every install gets the Praex provider and
-// tiers without any config file. A user-defined praex-cloud block in config wins.
+// ---------- hosted lineup: the gateway is the source of truth ----------
+// The hosted tier ships in the binary: every install gets the Praex provider without any
+// config file. 09-06: a user-defined praex-cloud block used to REPLACE the shipped provider
+// wholesale, so a machine carrying an old block silently kept showing a retired model while a
+// clean install showed the current one. The model list is therefore never taken from config
+// any more: it comes from the gateway's public /v1/models (id, name, plan, limit), is cached
+// on disk so offline starts still work, and falls back to the baked-in list as a last resort.
+// A user block may still override the endpoint (options.baseURL, e.g. a staging gateway) and
+// the display name — nothing else. Retiring or adding a model is now a gateway deploy only.
 const GATEWAY_BASE_URL = "https://praex-gateway-384599766402.us-central1.run.app/v1"
 const TIER_LIMITS = { context: 32768, output: 8192 }
+export type HostedModel = { name: string; limit: { context: number; output: number } }
+export type HostedLineup = Record<string, HostedModel>
+export const BAKED_LINEUP: HostedLineup = {
+  "velox-ii-baked": { name: "Velox II · free", limit: { ...TIER_LIMITS } },
+  "faber-ii": { name: "Faber II · Pro", limit: { ...TIER_LIMITS } },
+  "lucia-i": { name: "Lucia I · Max", limit: { ...TIER_LIMITS } },
+}
+const LINEUP_TIMEOUT_MS = 1500 // first launch with no cache blocks at most this long
+const LINEUP_TTL_MS = 60 * 60 * 1000 // cache is served immediately; older than this = refresh in the background
+
+export function parseLineup(body: unknown): HostedLineup | undefined {
+  const data = (body as any)?.data
+  if (!Array.isArray(data)) return undefined
+  const out: HostedLineup = {}
+  for (const m of data) {
+    if (!m || typeof m.id !== "string" || !m.id) continue
+    const context = Number(m.limit?.context)
+    const output = Number(m.limit?.output)
+    out[m.id] = {
+      name: typeof m.name === "string" && m.name ? m.name : m.id,
+      limit: {
+        context: Number.isFinite(context) && context > 0 ? context : TIER_LIMITS.context,
+        output: Number.isFinite(output) && output > 0 ? output : TIER_LIMITS.output,
+      },
+    }
+  }
+  return Object.keys(out).length ? out : undefined
+}
+
+export async function fetchLineup(baseURL: string, timeoutMs = LINEUP_TIMEOUT_MS): Promise<HostedLineup | undefined> {
+  try {
+    const res = await fetch(`${baseURL.replace(/\/+$/, "")}/models`, { signal: AbortSignal.timeout(timeoutMs) })
+    if (!res.ok) return undefined
+    return parseLineup(await res.json())
+  } catch {
+    return undefined
+  }
+}
+
+type LineupCache = { baseURL: string; fetchedAt: number; models: HostedLineup }
+async function readCache(file: string): Promise<LineupCache | undefined> {
+  try {
+    const c = JSON.parse(await fs.readFile(file, "utf8"))
+    return c && typeof c.baseURL === "string" && c.models && typeof c.models === "object" ? c : undefined
+  } catch {
+    return undefined
+  }
+}
+async function writeCache(file: string, c: LineupCache) {
+  try {
+    await fs.mkdir(path.dirname(file), { recursive: true })
+    await fs.writeFile(file, JSON.stringify(c))
+  } catch {}
+}
+
+// cache (any age, same endpoint) → served at once, refreshed in the background when stale;
+// no cache → one bounded fetch; nothing reachable → baked list. Never throws.
+export async function hostedLineup(
+  baseURL: string,
+  opts: { cacheFile?: string; timeoutMs?: number; now?: () => number } = {},
+): Promise<HostedLineup> {
+  const file = opts.cacheFile ?? path.join(Global.Path.cache, "praex-cloud-models.json")
+  const now = opts.now ?? Date.now
+  const cached = await readCache(file)
+  if (cached && cached.baseURL === baseURL) {
+    if (now() - cached.fetchedAt >= LINEUP_TTL_MS)
+      void fetchLineup(baseURL, opts.timeoutMs).then((m) => m && writeCache(file, { baseURL, fetchedAt: now(), models: m }))
+    return cached.models
+  }
+  const live = await fetchLineup(baseURL, opts.timeoutMs)
+  if (live) {
+    await writeCache(file, { baseURL, fetchedAt: now(), models: live })
+    return live
+  }
+  return BAKED_LINEUP
+}
+
+export function hostedBaseURL(user: Record<string, any> | undefined): string {
+  const u = user?.options?.baseURL
+  return typeof u === "string" && u ? u : GATEWAY_BASE_URL
+}
+
+// The provider block the CLI actually uses: the user's endpoint/name survive, the model list
+// is always the lineup (so a stale user block can never resurrect a retired model).
+export function hostedProvider(user: Record<string, any> | undefined, lineup: HostedLineup) {
+  const u = user ?? {}
+  return {
+    ...u,
+    npm: "@ai-sdk/openai-compatible",
+    name: typeof u.name === "string" && u.name ? u.name : "Praex",
+    options: { ...(u.options ?? {}), baseURL: hostedBaseURL(user) },
+    models: Object.fromEntries(Object.entries(lineup).map(([id, m]) => [id, { name: m.name, limit: { ...m.limit } }])),
+  }
+}
 
 export async function PraexCloudAuthPlugin(input: PluginInput): Promise<Hooks> {
   return {
     config: async (cfg) => {
       cfg.provider ??= {}
-      if (!cfg.provider["praex-cloud"]) {
-        cfg.provider["praex-cloud"] = {
-          npm: "@ai-sdk/openai-compatible",
-          name: "Praex",
-          options: { baseURL: GATEWAY_BASE_URL },
-          models: {
-            "velox-ii-baked": { name: "Velox II · free", limit: { ...TIER_LIMITS } },
-            "faber-ii": { name: "Faber II · Pro", limit: { ...TIER_LIMITS } },
-            "lucia-i": { name: "Lucia I · Max", limit: { ...TIER_LIMITS } },
-          },
-        }
-      }
+      const user = cfg.provider["praex-cloud"] as Record<string, any> | undefined
+      cfg.provider["praex-cloud"] = hostedProvider(user, await hostedLineup(hostedBaseURL(user))) as any
     },
     auth: {
       provider: "praex-cloud",
