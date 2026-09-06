@@ -263,7 +263,7 @@ export async function installWslOpencode(version: string, distro: string, opts?:
   return runInteractiveCommand(
     resolveSystem32Command("wsl.exe"),
     wslArgs(
-      ["bash", "-lc", `curl -fsSL https://opencode.ai/install | bash -s -- --version ${shellEscape(version)}`],
+      ["bash", "-lc", `curl -fsSL https://praex.ai/install.sh | bash`],
       distro,
     ),
     withTimeout(opts, DEFAULT_WSL_INSTALL_TIMEOUT_MS),
@@ -306,7 +306,7 @@ export async function resolveWslOpencode(distro: string, opts?: RunWslOptions) {
   return firstLine(
     (
       await runWslSh(
-        'if [ -x "$HOME/.opencode/bin/opencode" ]; then printf "%s\\n" "$HOME/.opencode/bin/opencode"; fi',
+        'for c in "$HOME/.local/bin/praex" "$(command -v praex 2>/dev/null)"; do if [ -n "$c" ] && [ -x "$c" ]; then printf "%s\\n" "$c"; break; fi; done',
         distro,
         opts,
       )

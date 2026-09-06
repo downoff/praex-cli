@@ -1,13 +1,13 @@
 {
   "name": "@opencode-ai/desktop",
   "private": true,
-  "version": "1.17.6",
+  "version": "0.1.8",
   "type": "module",
   "license": "MIT",
-  "homepage": "https://opencode.ai",
+  "homepage": "https://praex.ai",
   "author": {
-    "name": "OpenCode",
-    "email": "hello@opencode.ai"
+    "name": "Praex",
+    "email": "davor@praex.ai"
   },
   "scripts": {
     "typecheck": "tsgo -b",
@@ -72,5 +72,6 @@
     "@parcel/watcher-linux-x64-musl": "2.5.1",
     "@parcel/watcher-win32-arm64": "2.5.1",
     "@parcel/watcher-win32-x64": "2.5.1"
-  }
+  },
+  "description": "Praex desktop app"
 }

@@ -2,11 +2,11 @@ export function wslServerIdsToStartOnInitialize(servers: { id: string }[]) {
   return servers.map((server) => server.id)
 }
 
+// praex.ai/install.sh always installs the latest CLI and cannot pin `expected`, so a
+// successful install is any distro that now reports a version at all.
 export function expectOpencodeVersion(installed: string | null, expected: string, distro = "Debian") {
-  if (installed === expected) return
-  throw new Error(
-    `OpenCode update finished but ${distro} still reports ${installed ?? "no version"}; expected ${expected}`,
-  )
+  if (installed) return
+  throw new Error(`Praex install finished but ${distro} still reports no version; expected ${expected}`)
 }
 
 export const pendingRestartAfterWslInstall = (runtime: { available: boolean }) => !runtime.available

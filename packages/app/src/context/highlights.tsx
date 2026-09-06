@@ -7,7 +7,8 @@ import { useSettings } from "@/context/settings"
 import { persisted } from "@/utils/persist"
 import { DialogReleaseNotes, type Highlight } from "@/components/dialog-release-notes"
 
-const CHANGELOG_URL = "https://opencode.ai/changelog.json"
+// Praex release feed (written by praex-web/release.sh): [{ version, date, notes: string[] }]
+const CHANGELOG_URL = "https://praex.ai/dl/changelog.json"
 
 type Store = {
   version?: string
@@ -63,7 +64,16 @@ function parseHighlight(value: unknown): Highlight | undefined {
 
 function parseRelease(value: unknown): ParsedRelease | undefined {
   if (!isRecord(value)) return
-  const tag = getText(value.tag) ?? getText(value.tag_name) ?? getText(value.name)
+  const tag = getText(value.tag) ?? getText(value.tag_name) ?? getText(value.name) ?? getText(value.version)
+
+  // Praex feed: plain release notes, one highlight per note.
+  if (Array.isArray(value.notes)) {
+    const highlights = value.notes
+      .map((note) => getText(note))
+      .filter((note): note is string => note !== undefined)
+      .map((note) => ({ title: note, description: tag ? `Praex ${tag}` : "Praex" }))
+    return { tag, highlights }
+  }
 
   if (!Array.isArray(value.highlights)) {
     return { tag, highlights: [] }

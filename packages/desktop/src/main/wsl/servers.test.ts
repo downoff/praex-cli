@@ -20,10 +20,11 @@ test("starts every configured WSL server on initialization", () => {
   ).toEqual(["wsl:Debian", "wsl:Ubuntu-24.04"])
 })
 
-test("rejects an update that did not install the desktop version", () => {
-  expect(() => expectOpencodeVersion("1.16.2", "1.16.2")).not.toThrow()
-  expect(() => expectOpencodeVersion("1.14.35", "1.16.2")).toThrow(
-    "OpenCode update finished but Debian still reports 1.14.35; expected 1.16.2",
+test("accepts any installed version (the installer cannot pin one) but rejects a missing install", () => {
+  expect(() => expectOpencodeVersion("0.1.8", "0.1.8")).not.toThrow()
+  expect(() => expectOpencodeVersion("0.1.9", "0.1.8")).not.toThrow()
+  expect(() => expectOpencodeVersion(null, "0.1.8")).toThrow(
+    "Praex install finished but Debian still reports no version; expected 0.1.8",
   )
 })
 
