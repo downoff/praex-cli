@@ -193,7 +193,7 @@ export async function PraexCloudAuthPlugin(input: PluginInput): Promise<Hooks> {
           options: { baseURL: GATEWAY_BASE_URL },
           models: {
             "velox-ii-baked": { name: "Velox II · free", limit: { ...TIER_LIMITS } },
-            "faber-i": { name: "Faber I · Pro", limit: { ...TIER_LIMITS } },
+            "faber-ii": { name: "Faber II · Pro", limit: { ...TIER_LIMITS } },
             "lucia-i": { name: "Lucia I · Max", limit: { ...TIER_LIMITS } },
           },
         }
