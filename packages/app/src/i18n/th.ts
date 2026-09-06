@@ -152,6 +152,8 @@ export const dict = {
   "provider.connect.oauth.auto.visit.suffix":
     " และป้อนรหัสด้านล่างเพื่อเชื่อมต่อบัญชีและใช้โมเดล {{provider}} ใน Praex",
   "provider.connect.oauth.auto.confirmationCode": "รหัสยืนยัน",
+  "provider.connect.oauth.auto.fallback.prefix": " Nothing opened? Visit ",
+  "provider.connect.oauth.auto.fallback.suffix": ".",
   "provider.connect.toast.connected.title": "{{provider}} ที่เชื่อมต่อแล้ว",
   "provider.connect.toast.connected.description": "โมเดล {{provider}} พร้อมใช้งานแล้ว",
 
@@ -493,6 +495,20 @@ export const dict = {
   "notification.session.error.fallbackDescription": "เกิดข้อผิดพลาด",
 
   "home.recentProjects": "โปรเจกต์ล่าสุด",
+
+  "home.welcome.tagline": "Your own frontier models, on your machine. No nannying.",
+
+  "home.welcome.tiers": "Hosted models",
+
+  "home.welcome.signIn": "Sign in with Google",
+
+  "home.welcome.skip": "Continue without signing in",
+
+  "praex.signin.title": "Sign in to use Praex models",
+
+  "praex.signin.description": "Velox II is free every day. Sign in with Google to continue where you left off.",
+
+  "praex.signin.action": "Sign in to Praex",
   "home.empty.title": "ไม่มีโปรเจกต์ล่าสุด",
   "home.empty.description": "เริ่มต้นโดยเปิดโปรเจกต์ในเครื่อง",
 

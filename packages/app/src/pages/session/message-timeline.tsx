@@ -19,6 +19,7 @@ import { Virtualizer, type VirtualizerHandle } from "virtua/solid"
 import { Accordion } from "@opencode-ai/ui/accordion"
 import { Button } from "@opencode-ai/ui/button"
 import { Card } from "@opencode-ai/ui/card"
+import { isPraexSignInError, PraexSignInCard } from "@/components/praex-sign-in-card"
 import {
   ContextToolGroup,
   Message,
@@ -1239,9 +1240,16 @@ export function MessageTimeline(props: {
         return (
           <TimelineRowFrame row={errorRow}>
             <div data-slot="session-turn-message-container" class="w-full px-4 md:px-5">
-              <Card variant="error" class="error-card">
-                {errorRow().text}
-              </Card>
+              <Show
+                when={isPraexSignInError(errorRow().text)}
+                fallback={
+                  <Card variant="error" class="error-card">
+                    {errorRow().text}
+                  </Card>
+                }
+              >
+                <PraexSignInCard text={errorRow().text} />
+              </Show>
             </div>
           </TimelineRowFrame>
         )

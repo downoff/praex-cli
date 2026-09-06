@@ -44,7 +44,13 @@ const ModelList: Component<{
       items={models}
       current={model.current()}
       filterKeys={["provider.name", "name", "id"]}
-      sortBy={(a, b) => a.name.localeCompare(b.name)}
+      sortBy={(a, b) => {
+        if (a.provider.id === "praex-cloud" && b.provider.id === "praex-cloud") {
+          const d = praexTierRank(a.name) - praexTierRank(b.name)
+          if (d !== 0) return d
+        }
+        return a.name.localeCompare(b.name)
+      }}
       groupBy={(x) => x.provider.name}
       sortGroupsBy={(a, b) => {
         const aProvider = a.items[0].provider.id
@@ -194,6 +200,13 @@ export function ModelSelectorPopover(props: {
       </Kobalte.Portal>
     </Kobalte>
   )
+}
+
+// Hosted Praex tiers list in plan order (the name carries "· free / · Pro / · Max").
+function praexTierRank(name: string) {
+  const m = /·\s*(free|pro|max)\s*$/i.exec(name)
+  if (!m) return 3
+  return { free: 0, pro: 1, max: 2 }[m[1].toLowerCase()] ?? 3
 }
 
 export const DialogSelectModel: Component<{ provider?: string; model?: ModelState }> = (props) => {

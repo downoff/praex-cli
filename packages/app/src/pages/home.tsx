@@ -1,5 +1,5 @@
 import type { Session } from "@opencode-ai/sdk/v2/client"
-import { batch, createEffect, createMemo, For, Match, on, onCleanup, onMount, Show, Switch } from "solid-js"
+import { batch, createEffect, createMemo, createSignal, For, Match, on, onCleanup, onMount, Show, Switch } from "solid-js"
 import { makeEventListener } from "@solid-primitives/event-listener"
 import { createStore } from "solid-js/store"
 import { useQuery } from "@tanstack/solid-query"
@@ -20,6 +20,7 @@ import { usePlatform } from "@/context/platform"
 import { DateTime } from "luxon"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { useDirectoryPicker } from "@/components/directory-picker"
+import { openPraexSignIn } from "@/components/praex-sign-in-card"
 import { DialogSelectServer, useServerManagementController } from "@/components/dialog-select-server"
 import { DialogServerV2 } from "@/components/settings-v2/dialog-server-v2"
 import { ServerConnection, useServer } from "@/context/server"
@@ -1157,6 +1158,20 @@ function groupSessions(records: HomeSessionRecord[], language: ReturnType<typeof
   ].filter((group) => group.sessions.length > 0)
 }
 
+const WELCOME_KEY = "praex.welcome.dismissed"
+function readWelcomeDismissed() {
+  try {
+    return localStorage.getItem(WELCOME_KEY) === "1"
+  } catch {
+    return false
+  }
+}
+function writeWelcomeDismissed() {
+  try {
+    localStorage.setItem(WELCOME_KEY, "1")
+  } catch {}
+}
+
 function LegacyHome() {
   const sync = useServerSync()
   const platform = usePlatform()
@@ -1170,9 +1185,36 @@ function LegacyHome() {
   const recent = createMemo(() => {
     return sync()
       .data.project.slice()
+      // the server's own start directory ("/" or the home folder) is not a project the user opened
+      .filter((p) => p.worktree !== "/" && p.worktree !== homedir())
       .sort((a, b) => (b.time.updated ?? b.time.created) - (a.time.updated ?? a.time.created))
       .slice(0, 5)
   })
+
+  // First run: no Praex account and no other provider connected -> welcome instead of the bare home.
+  const praex = createMemo(() => sync().data.provider.all.get("praex-cloud"))
+  const praexSignedIn = createMemo(() => (praex()?.options as Record<string, unknown> | undefined)?.signedIn === true)
+  const otherConnected = createMemo(() => sync().data.provider.connected.some((id) => id !== "praex-cloud"))
+  const [welcomeDismissed, setWelcomeDismissed] = createSignal(readWelcomeDismissed())
+  const showWelcome = createMemo(() => sync().ready && !!praex() && !praexSignedIn() && !otherConnected() && !welcomeDismissed())
+  const tiers = createMemo(() => {
+    const models = Object.values(praex()?.models ?? {})
+    const rank = (name: string) => {
+      const m = /·\s*(free|pro|max)\s*$/i.exec(name)
+      return m ? ({ free: 0, pro: 1, max: 2 }[m[1].toLowerCase()] ?? 3) : 3
+    }
+    return models
+      .map((m) => {
+        const [name, plan] = m.name.split(" · ")
+        return { id: m.id, name: name ?? m.name, plan: plan ?? "", rank: rank(m.name) }
+      })
+      .sort((a, b) => a.rank - b.rank)
+  })
+  const dismissWelcome = () => {
+    writeWelcomeDismissed()
+    setWelcomeDismissed(true)
+  }
+  const signIn = () => openPraexSignIn(dialog)
 
   const serverDotClass = createMemo(() => {
     const healthy = global.servers.health[server.key]?.healthy
@@ -1211,8 +1253,36 @@ function LegacyHome() {
   }
 
   return (
+    <Show
+      when={!showWelcome()}
+      fallback={
+        <div class="mx-auto mt-40 flex w-full max-w-[560px] flex-col items-center gap-7 px-4 text-center">
+          <Logo class="md:w-md" />
+          <div class="text-16-regular text-text-weak max-w-[420px]">{language.t("home.welcome.tagline")}</div>
+          <div class="flex w-full flex-col gap-1 rounded-[10px] bg-v2-background-bg-deep p-2 text-left">
+            <div class="px-2 pt-1 pb-1.5 text-12-regular text-text-weak">{language.t("home.welcome.tiers")}</div>
+            <For each={tiers()}>
+              {(tier) => (
+                <div class="flex items-center justify-between rounded-[6px] px-2 py-1.5">
+                  <span class="text-14-medium text-text-strong">{tier.name}</span>
+                  <span class="text-12-regular text-text-weak">{tier.plan}</span>
+                </div>
+              )}
+            </For>
+          </div>
+          <div class="flex w-full flex-col items-center gap-2">
+            <Button size="large" variant="primary" class="w-full justify-center" onClick={signIn}>
+              {language.t("home.welcome.signIn")}
+            </Button>
+            <Button size="large" variant="ghost" class="w-full justify-center text-text-weak" onClick={dismissWelcome}>
+              {language.t("home.welcome.skip")}
+            </Button>
+          </div>
+        </div>
+      }
+    >
     <div class="mx-auto mt-55 w-full md:w-auto px-4">
-      <Logo class="md:w-xl opacity-12" />
+      <Logo class="md:w-xl opacity-90" />
       <Button
         size="large"
         variant="ghost"
@@ -1228,7 +1298,7 @@ function LegacyHome() {
         {server.name}
       </Button>
       <Switch>
-        <Match when={sync().data.project.length > 0}>
+        <Match when={recent().length > 0}>
           <div class="mt-20 w-full flex flex-col gap-4">
             <div class="flex gap-2 items-center justify-between pl-3">
               <div class="text-14-medium text-text-strong">{language.t("home.recentProjects")}</div>
@@ -1277,5 +1347,6 @@ function LegacyHome() {
         </Match>
       </Switch>
     </div>
+    </Show>
   )
 }

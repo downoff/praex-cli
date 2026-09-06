@@ -1,6 +1,7 @@
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { app, utilityProcess } from "electron"
+import { homedir } from "node:os"
 import type { Details } from "electron"
 import { getLogger } from "./logging"
 import { getUserShell, loadShellEnv } from "./shell-env"
@@ -60,7 +61,8 @@ export async function spawnLocalServer(
 ) {
   const sidecar = join(dirname(fileURLToPath(import.meta.url)), "sidecar.js")
   const child = utilityProcess.fork(sidecar, [], {
-    cwd: process.cwd(),
+    // the user's home, never the launcher's cwd ("/" under AppImage) — it becomes the first project
+    cwd: homedir(),
     env: createSidecarEnv(),
     serviceName: SIDECAR_SERVICE_NAME,
     stdio: "pipe",

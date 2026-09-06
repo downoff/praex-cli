@@ -155,6 +155,8 @@ export const dict = {
   "provider.connect.oauth.auto.visit.suffix":
     " і введіть код нижче, щоб підключити обліковий запис і використовувати моделі {{provider}} у Praex.",
   "provider.connect.oauth.auto.confirmationCode": "Код підтвердження",
+  "provider.connect.oauth.auto.fallback.prefix": " Nothing opened? Visit ",
+  "provider.connect.oauth.auto.fallback.suffix": ".",
   "provider.connect.toast.connected.title": "{{provider}} підключено",
   "provider.connect.toast.connected.description": "Моделі {{provider}} тепер доступні для використання.",
 
@@ -526,6 +528,20 @@ export const dict = {
   "notification.session.error.fallbackDescription": "Сталася помилка",
 
   "home.recentProjects": "Нещодавні проєкти",
+
+  "home.welcome.tagline": "Your own frontier models, on your machine. No nannying.",
+
+  "home.welcome.tiers": "Hosted models",
+
+  "home.welcome.signIn": "Sign in with Google",
+
+  "home.welcome.skip": "Continue without signing in",
+
+  "praex.signin.title": "Sign in to use Praex models",
+
+  "praex.signin.description": "Velox II is free every day. Sign in with Google to continue where you left off.",
+
+  "praex.signin.action": "Sign in to Praex",
   "home.empty.title": "Немає нещодавніх проєктів",
   "home.empty.description": "Почніть, відкривши локальний проєкт",
 

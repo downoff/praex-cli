@@ -275,6 +275,12 @@ export function hostedBaseURL(user: Record<string, any> | undefined): string {
 
 // The provider block the CLI actually uses: the user's endpoint/name survive, the model list
 // is always the lineup (so a stale user block can never resurrect a retired model).
+/** The free tier's id: the entry whose display name ends in "· free", else the first entry. */
+export function freeModelID(lineup: HostedLineup) {
+  const ids = Object.keys(lineup)
+  return ids.find((id) => /·\s*free$/i.test(lineup[id].name)) ?? ids[0]
+}
+
 export function hostedProvider(user: Record<string, any> | undefined, lineup: HostedLineup) {
   const u = user ?? {}
   return {
@@ -291,7 +297,11 @@ export async function PraexCloudAuthPlugin(input: PluginInput): Promise<Hooks> {
     config: async (cfg) => {
       cfg.provider ??= {}
       const user = cfg.provider["praex-cloud"] as Record<string, any> | undefined
-      cfg.provider["praex-cloud"] = hostedProvider(user, await hostedLineup(hostedBaseURL(user))) as any
+      const lineup = await hostedLineup(hostedBaseURL(user))
+      cfg.provider["praex-cloud"] = hostedProvider(user, lineup) as any
+      // Praex is the default even when other providers are configured (a GEMINI_API_KEY in the
+      // shell, say); a model the user set themselves always wins.
+      cfg.model ??= `praex-cloud/${freeModelID(lineup)}`
     },
     auth: {
       provider: "praex-cloud",
@@ -308,7 +318,7 @@ export async function PraexCloudAuthPlugin(input: PluginInput): Promise<Hooks> {
             return {
               url,
               instructions:
-                "Sign in with Google in the browser. The terminal picks it up automatically. Nothing happening? Press Ctrl+C, run `praex login` again and pick Connect code.",
+                "Sign in with Google in the browser window that opened. Praex picks it up automatically.",
               method: "auto" as const,
               callback: async () => {
                 try {
@@ -358,6 +368,8 @@ export async function PraexCloudAuthPlugin(input: PluginInput): Promise<Hooks> {
 
         return {
           apiKey: OAUTH_DUMMY_KEY,
+          // read by the desktop/web app to know a Praex account is connected (options reach the client)
+          signedIn: true,
           async fetch(requestInput: RequestInfo | URL, init?: RequestInit) {
             const headers = new Headers(init?.headers)
             headers.delete("authorization")
@@ -371,7 +383,7 @@ export async function PraexCloudAuthPlugin(input: PluginInput): Promise<Hooks> {
                 refreshPromise = exchangeRefreshToken(current.refresh)
                   .then(async (tokens) => {
                     if (!tokens)
-                      throw new Error("Praex sign-in expired — run `praex auth login` and pick Praex")
+                      throw new Error("Praex sign-in expired. Sign in again.")
                     await input.client.auth.set({
                       path: { id: "praex-cloud" },
                       body: {

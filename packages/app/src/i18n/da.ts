@@ -152,6 +152,8 @@ export const dict = {
   "provider.connect.oauth.auto.visit.suffix":
     " og indtast koden nedenfor for at forbinde din konto og bruge {{provider}} modeller i Praex.",
   "provider.connect.oauth.auto.confirmationCode": "Bekræftelseskode",
+  "provider.connect.oauth.auto.fallback.prefix": " Nothing opened? Visit ",
+  "provider.connect.oauth.auto.fallback.suffix": ".",
   "provider.connect.toast.connected.title": "{{provider}} forbundet",
   "provider.connect.toast.connected.description": "{{provider}} modeller er nu tilgængelige.",
 
@@ -494,6 +496,20 @@ export const dict = {
   "notification.session.error.fallbackDescription": "Der opstod en fejl",
 
   "home.recentProjects": "Seneste projekter",
+
+  "home.welcome.tagline": "Your own frontier models, on your machine. No nannying.",
+
+  "home.welcome.tiers": "Hosted models",
+
+  "home.welcome.signIn": "Sign in with Google",
+
+  "home.welcome.skip": "Continue without signing in",
+
+  "praex.signin.title": "Sign in to use Praex models",
+
+  "praex.signin.description": "Velox II is free every day. Sign in with Google to continue where you left off.",
+
+  "praex.signin.action": "Sign in to Praex",
   "home.empty.title": "Ingen seneste projekter",
   "home.empty.description": "Kom i gang ved at åbne et lokalt projekt",
 

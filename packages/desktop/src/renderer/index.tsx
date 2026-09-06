@@ -339,7 +339,7 @@ render(() => {
       const list: ServerConnection.Any[] = []
       if (data) {
         list.push({
-          displayName: "Local Server",
+          displayName: "This computer",
           type: "sidecar",
           variant: "base",
           http: {

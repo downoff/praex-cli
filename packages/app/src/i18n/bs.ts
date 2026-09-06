@@ -152,6 +152,8 @@ export const dict = {
   "provider.connect.oauth.auto.visit.suffix":
     " i unesi kod ispod da povežeš račun i koristiš {{provider}} modele u Praex-u.",
   "provider.connect.oauth.auto.confirmationCode": "Kod za potvrdu",
+  "provider.connect.oauth.auto.fallback.prefix": " Nothing opened? Visit ",
+  "provider.connect.oauth.auto.fallback.suffix": ".",
   "provider.connect.toast.connected.title": "{{provider}} povezan",
   "provider.connect.toast.connected.description": "{{provider}} modeli su sada dostupni za korištenje.",
 
@@ -497,6 +499,20 @@ export const dict = {
   "notification.session.error.fallbackDescription": "Došlo je do greške",
 
   "home.recentProjects": "Nedavni projekti",
+
+  "home.welcome.tagline": "Your own frontier models, on your machine. No nannying.",
+
+  "home.welcome.tiers": "Hosted models",
+
+  "home.welcome.signIn": "Sign in with Google",
+
+  "home.welcome.skip": "Continue without signing in",
+
+  "praex.signin.title": "Sign in to use Praex models",
+
+  "praex.signin.description": "Velox II is free every day. Sign in with Google to continue where you left off.",
+
+  "praex.signin.action": "Sign in to Praex",
   "home.empty.title": "Nema nedavnih projekata",
   "home.empty.description": "Kreni tako što ćeš otvoriti lokalni projekat",
 

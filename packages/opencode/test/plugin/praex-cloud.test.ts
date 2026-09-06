@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test"
 import fs from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
-import { BAKED_LINEUP, hostedLineup, hostedProvider, parseLineup } from "../../src/plugin/praex-cloud"
+import { BAKED_LINEUP, freeModelID, hostedLineup, hostedProvider, parseLineup, PraexCloudAuthPlugin } from "../../src/plugin/praex-cloud"
 
 const tmpCache = async () => path.join(await fs.mkdtemp(path.join(os.tmpdir(), "praex-lineup-")), "models.json")
 const DEAD = "http://127.0.0.1:9/v1" // discard port: refused instantly, never answers
@@ -75,5 +75,22 @@ describe("praex-cloud hosted lineup", () => {
     await fs.writeFile(file, JSON.stringify({ baseURL: "http://other/v1", fetchedAt: Date.now(), models: { "o-1": { name: "O", limit: { context: 1, output: 1 } } } }))
     const l = await hostedLineup(DEAD, { cacheFile: file, timeoutMs: 500 })
     expect(l).toEqual(BAKED_LINEUP)
+  })
+
+  test("freeModelID picks the '· free' tier, else the first entry", () => {
+    expect(freeModelID(BAKED_LINEUP)).toBe("velox-ii-baked")
+    expect(freeModelID({ "b": { name: "B · Pro", limit: { context: 1, output: 1 } }, "a": { name: "A · free", limit: { context: 1, output: 1 } } })).toBe("a")
+    expect(freeModelID({ "x": { name: "X", limit: { context: 1, output: 1 } } })).toBe("x")
+  })
+
+  test("config hook: Praex free tier is the default model; a user-set model survives", async () => {
+    const hooks = await PraexCloudAuthPlugin({} as any)
+    // DEAD endpoint → baked lineup (or the on-disk cache when one exists for that URL): both name the free tier
+    const fresh: any = { provider: { "praex-cloud": { options: { baseURL: DEAD } } } }
+    await hooks.config!(fresh)
+    expect(fresh.model).toBe("praex-cloud/velox-ii-baked")
+    const mine: any = { model: "google/gemini-3.5-flash", provider: { "praex-cloud": { options: { baseURL: DEAD } } } }
+    await hooks.config!(mine)
+    expect(mine.model).toBe("google/gemini-3.5-flash")
   })
 })

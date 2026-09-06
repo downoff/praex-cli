@@ -9,7 +9,7 @@ import { ProviderIcon } from "@opencode-ai/ui/provider-icon"
 import { Spinner } from "@opencode-ai/ui/spinner"
 import { TextField } from "@opencode-ai/ui/text-field"
 import { showToast } from "@/utils/toast"
-import { createEffect, createMemo, createResource, Match, onCleanup, onMount, Switch } from "solid-js"
+import { Show, createEffect, createMemo, createResource, Match, onCleanup, onMount, Switch } from "solid-js"
 import { createStore, produce } from "solid-js/store"
 import { Link } from "@/components/link"
 import { useServerSDK } from "@/context/server-sdk"
@@ -530,6 +530,12 @@ export function DialogConnectProvider(props: { provider: string }) {
       }
       return instructions
     })
+    // Device-code flows (GitHub Copilot) put a short code in `instructions`; loopback flows (Praex)
+    // put a sentence there and there is nothing to type. Only show a code box for an actual code.
+    const looksLikeCode = createMemo(() => {
+      const c = code()
+      return !!c && c.length <= 24 && !/\s/.test(c)
+    })
 
     onMount(() => {
       void (async () => {
@@ -556,17 +562,31 @@ export function DialogConnectProvider(props: { provider: string }) {
     return (
       <div class="flex flex-col gap-6">
         <div class="text-14-regular text-text-base">
-          {language.t("provider.connect.oauth.auto.visit.prefix")}
-          <Link href={store.authorization!.url}>{language.t("provider.connect.oauth.auto.visit.link")}</Link>
-          {language.t("provider.connect.oauth.auto.visit.suffix", { provider: provider().name })}
+          <Show
+            when={looksLikeCode()}
+            fallback={
+              <>
+                {store.authorization?.instructions}
+                {language.t("provider.connect.oauth.auto.fallback.prefix")}
+                <Link href={store.authorization!.url}>{language.t("provider.connect.oauth.auto.visit.link")}</Link>
+                {language.t("provider.connect.oauth.auto.fallback.suffix")}
+              </>
+            }
+          >
+            {language.t("provider.connect.oauth.auto.visit.prefix")}
+            <Link href={store.authorization!.url}>{language.t("provider.connect.oauth.auto.visit.link")}</Link>
+            {language.t("provider.connect.oauth.auto.visit.suffix", { provider: provider().name })}
+          </Show>
         </div>
-        <TextField
-          label={language.t("provider.connect.oauth.auto.confirmationCode")}
-          class="font-mono"
-          value={code()}
-          readOnly
-          copyable
-        />
+        <Show when={looksLikeCode()}>
+          <TextField
+            label={language.t("provider.connect.oauth.auto.confirmationCode")}
+            class="font-mono"
+            value={code()}
+            readOnly
+            copyable
+          />
+        </Show>
         <div class="text-14-regular text-text-base flex items-center gap-4">
           <Spinner />
           <span>{language.t("provider.connect.status.waiting")}</span>

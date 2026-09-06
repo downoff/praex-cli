@@ -174,6 +174,8 @@ export const dict = {
   "provider.connect.oauth.auto.visit.link": "此链接",
   "provider.connect.oauth.auto.visit.suffix": " 并输入以下代码，以连接你的帐户并在 Praex 中使用 {{provider}} 模型。",
   "provider.connect.oauth.auto.confirmationCode": "确认码",
+  "provider.connect.oauth.auto.fallback.prefix": " Nothing opened? Visit ",
+  "provider.connect.oauth.auto.fallback.suffix": ".",
   "provider.connect.toast.connected.title": "{{provider}} 已连接",
   "provider.connect.toast.connected.description": "现在可以使用 {{provider}} 模型了。",
 
@@ -496,6 +498,20 @@ export const dict = {
   "notification.session.error.fallbackDescription": "发生错误",
 
   "home.recentProjects": "最近项目",
+
+  "home.welcome.tagline": "Your own frontier models, on your machine. No nannying.",
+
+  "home.welcome.tiers": "Hosted models",
+
+  "home.welcome.signIn": "Sign in with Google",
+
+  "home.welcome.skip": "Continue without signing in",
+
+  "praex.signin.title": "Sign in to use Praex models",
+
+  "praex.signin.description": "Velox II is free every day. Sign in with Google to continue where you left off.",
+
+  "praex.signin.action": "Sign in to Praex",
   "home.empty.title": "没有最近项目",
   "home.empty.description": "通过打开本地项目开始使用",
   "home.title": "主页",
