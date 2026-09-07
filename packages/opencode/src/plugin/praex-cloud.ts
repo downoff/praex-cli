@@ -196,7 +196,7 @@ export type HostedLineup = Record<string, HostedModel>
 export const BAKED_LINEUP: HostedLineup = {
   "velox-ii-baked": { name: "Velox II · free", limit: { ...TIER_LIMITS } },
   "faber-ii": { name: "Faber II · Pro", limit: { ...TIER_LIMITS } },
-  "lucia-i": { name: "Lucia I · Max", limit: { ...TIER_LIMITS } },
+  "lucia-ii": { name: "Lucia II · Max", limit: { ...TIER_LIMITS } },
 }
 const LINEUP_TIMEOUT_MS = 1500 // first launch with no cache blocks at most this long
 const LINEUP_TTL_MS = 60 * 60 * 1000 // cache is served immediately; older than this = refresh in the background
