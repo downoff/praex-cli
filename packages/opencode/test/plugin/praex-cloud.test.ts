@@ -36,7 +36,7 @@ describe("praex-cloud hosted lineup", () => {
     const p = hostedProvider(undefined, BAKED_LINEUP)
     expect(p.name).toBe("Praex")
     expect(p.options.baseURL).toMatch(/^https:\/\/praex-gateway-.*\/v1$/)
-    expect(p.models["faber-ii"].name).toBe("Faber II · Pro")
+    expect(p.models["velox-ii-baked"].name).toBe("Velox II")
   })
 
   test("live gateway list wins and is written to the cache", async () => {

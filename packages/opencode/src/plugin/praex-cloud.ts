@@ -193,10 +193,10 @@ const GATEWAY_BASE_URL = "https://praex-gateway-384599766402.us-central1.run.app
 const TIER_LIMITS = { context: 32768, output: 8192 }
 export type HostedModel = { name: string; limit: { context: number; output: number } }
 export type HostedLineup = Record<string, HostedModel>
+// 09-23 (founder decision): Praex ships ONE hosted model. Pro is more Velox, not another model.
+// The live gateway list still wins; this is only the offline / first-run fallback.
 export const BAKED_LINEUP: HostedLineup = {
-  "velox-ii-baked": { name: "Velox II · free", limit: { ...TIER_LIMITS } },
-  "faber-ii": { name: "Faber II · Pro", limit: { ...TIER_LIMITS } },
-  "lucia-ii": { name: "Lucia II · Max", limit: { ...TIER_LIMITS } },
+  "velox-ii-baked": { name: "Velox II", limit: { ...TIER_LIMITS } },
 }
 const LINEUP_TIMEOUT_MS = 1500 // first launch with no cache blocks at most this long
 const LINEUP_TTL_MS = 60 * 60 * 1000 // cache is served immediately; older than this = refresh in the background
