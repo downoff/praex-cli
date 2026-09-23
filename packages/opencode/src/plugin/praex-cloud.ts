@@ -197,6 +197,7 @@ export type HostedLineup = Record<string, HostedModel>
 // The live gateway list still wins; this is only the offline / first-run fallback.
 export const BAKED_LINEUP: HostedLineup = {
   "velox-ii-baked": { name: "Velox II", limit: { ...TIER_LIMITS } },
+  "faber-ii": { name: "Faber II · Pro", limit: { ...TIER_LIMITS } }, // on demand, paying Pro only
 }
 const LINEUP_TIMEOUT_MS = 1500 // first launch with no cache blocks at most this long
 const LINEUP_TTL_MS = 60 * 60 * 1000 // cache is served immediately; older than this = refresh in the background
